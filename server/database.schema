@@ -1,0 +1,58 @@
+// database schema - https://dbdiagram.io/d/Kanha-Enterprises-67d0879a75d75cc844b49c74
+
+Table users {
+  id integer [primary key]
+  shop_name varchar [not null]
+  email varchar [unique, not null]
+  password_hash varchar [not null]
+  created_at timestamp
+}
+
+Table items {
+  id integer [primary key]
+  user_id integer [not null] // References users.id
+  cat_no integer [unique, not null]
+  product_name varchar [not null]
+  lot_no integer
+  quantity integer [not null]
+  w_rate decimal [not null] // Wholesale rate
+  selling_price decimal [not null]
+  mrp decimal [not null]
+  created_at timestamp
+}
+
+Table invoices {
+  invoice_id varchar(50) [primary key] // Format: MPK/25-26/10001
+  user_id integer [not null] // References users.id
+  party_name varchar [not null]
+  order_no integer [unique, not null] 
+  address varchar
+  city varchar
+  state varchar
+  pincode varchar(10) // Alphanumeric support
+  gstin varchar(15)
+  created_at timestamp
+}
+
+Table invoice_items {
+  id integer [primary key]
+  invoice_id varchar(50) [not null] // References invoices.invoice_id
+  item_id integer [not null] // References items.id
+  quantity integer [not null]
+  price decimal [not null] // Ensuring price is always recorded
+}
+
+Table stock_movements { // NEW TABLE
+  id integer [primary key]
+  item_id integer [not null] // References items.id
+  type varchar(20) [not null] // ('in', 'out', 'return')
+  quantity integer [not null]
+  created_at timestamp
+}
+
+// Foreign Key References
+Ref: items.user_id > users.id
+Ref: invoices.user_id > users.id
+Ref: invoice_items.invoice_id > invoices.invoice_id
+Ref: invoice_items.item_id > items.id
+Ref: stock_movements.item_id > items.id
