@@ -3,6 +3,8 @@ import { useAuth } from "../../context/AuthContext";
 import ProtectedRoute from "../../components/ProtectedRoute";
 import { useEffect, useState } from "react";
 import { itemsApi } from "../../api/items-api";
+import DeleteConfirmation from "../../components/DeleteConfirmation";
+import EditItemModal from "../../components/EditItemModal";
 
 // Define the Item interface
 interface Item {
@@ -26,6 +28,18 @@ export default function StocksPage() {
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // State for delete confirmation
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<Item | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  
+  // State for edit modal
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [itemToEdit, setItemToEdit] = useState<Item | null>(null);
+  
+  // State for notifications
+  const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   useEffect(() => {
     const fetchItems = async () => {
@@ -48,6 +62,76 @@ export default function StocksPage() {
 
     fetchItems();
   }, [user?.id]);
+  
+  // Show notification
+  const showNotification = (message: string, type: 'success' | 'error') => {
+    setNotification({ message, type });
+    
+    // Auto-hide after 3 seconds
+    setTimeout(() => {
+      setNotification(null);
+    }, 3000);
+  };
+  
+  // Handle delete button click
+  const handleDeleteClick = (item: Item) => {
+    setItemToDelete(item);
+    setDeleteModalOpen(true);
+  };
+  
+  // Handle delete confirmation
+  const handleDeleteConfirm = async () => {
+    if (!itemToDelete) return;
+    
+    setIsDeleting(true);
+    try {
+      await itemsApi.deleteItem(itemToDelete.id);
+      
+      // Remove item from the list
+      setItems(items.filter(item => item.id !== itemToDelete.id));
+      
+      // Show success notification
+      showNotification("Item deleted successfully", "success");
+      
+      // Close modal
+      setDeleteModalOpen(false);
+      setItemToDelete(null);
+    } catch (err) {
+      console.error("Failed to delete item:", err);
+      showNotification(
+        err instanceof Error ? err.message : "Failed to delete item", 
+        "error"
+      );
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+  
+  // Handle edit button click
+  const handleEditClick = (item: Item) => {
+    setItemToEdit(item);
+    setEditModalOpen(true);
+  };
+  
+  // Handle save changes
+  const handleSaveChanges = async (updatedItem: Item) => {
+    try {
+      await itemsApi.updateItem(updatedItem.id, updatedItem);
+      
+      // Update the item in the list
+      setItems(items.map(item => 
+        item.id === updatedItem.id ? updatedItem : item
+      ));
+      
+      // Show success notification
+      showNotification("Item updated successfully", "success");
+      
+      return Promise.resolve();
+    } catch (err) {
+      console.error("Failed to update item:", err);
+      return Promise.reject(err);
+    }
+  };
 
   return (
     <ProtectedRoute>
@@ -61,10 +145,19 @@ export default function StocksPage() {
         <div className="flex-1 px-6 py-6">
           <div className="flex justify-between items-center mb-6">
             <h1 className="text-2xl font-bold">Stocks</h1>
-            <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded font-medium transition-colors">
-              Add New Item
-            </button>
+            <a href="/dashboard/add-stocks">
+              <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded font-medium transition-colors">
+                Add New Item
+              </button>
+            </a>
           </div>
+         
+          {/* Notification */}
+          {notification && (
+            <div className={`mb-4 p-3 rounded-md ${notification.type === 'success' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
+              {notification.message}
+            </div>
+          )}
          
           {/* Items Table Section */}
           <div className="bg-white rounded-lg shadow overflow-hidden">
@@ -128,8 +221,18 @@ export default function StocksPage() {
                             {item.selling_price ? `₹${parseFloat(item.selling_price).toFixed(2)}` : '-'}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            <button className="text-indigo-600 hover:text-indigo-900 mr-3">Edit</button>
-                            <button className="text-red-600 hover:text-red-900">Delete</button>
+                            <button 
+                              className="text-indigo-600 hover:text-indigo-900 mr-3"
+                              onClick={() => handleEditClick(item)}
+                            >
+                              Edit
+                            </button>
+                            <button 
+                              className="text-red-600 hover:text-red-900"
+                              onClick={() => handleDeleteClick(item)}
+                            >
+                              Delete
+                            </button>
                           </td>
                         </tr>
                       ))}
@@ -140,6 +243,29 @@ export default function StocksPage() {
             </div>
           </div>
         </div>
+        
+        {/* Delete Confirmation Modal */}
+        <DeleteConfirmation
+          isOpen={deleteModalOpen}
+          itemName={itemToDelete?.product_name || ''}
+          onClose={() => {
+            setDeleteModalOpen(false);
+            setItemToDelete(null);
+          }}
+          onConfirm={handleDeleteConfirm}
+          isDeleting={isDeleting}
+        />
+        
+        {/* Edit Item Modal */}
+        <EditItemModal
+          isOpen={editModalOpen}
+          item={itemToEdit}
+          onClose={() => {
+            setEditModalOpen(false);
+            setItemToEdit(null);
+          }}
+          onSave={handleSaveChanges}
+        />
       </div>
     </ProtectedRoute>
   );

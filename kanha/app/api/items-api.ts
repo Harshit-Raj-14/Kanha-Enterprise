@@ -10,14 +10,16 @@ const api = axios.create({
 
 // Define types for the item data
 interface StockItem {
+  id?: string;
   user_id: number;
-  cat_no: number;
+  cat_no: string | number;
   product_name: string;
-  lot_no?: number | null;
+  lot_no?: string | number | null;
   quantity: number;
-  w_rate?: number | null;
-  selling_price?: number | null;
-  mrp: number;
+  w_rate?: string | number | null;
+  selling_price?: string | number | null;
+  mrp: string | number;
+  created_at?: string;
 }
 
 // Define types for error responses
@@ -73,30 +75,98 @@ export const itemsApi = {
   addStockItem: async (itemData: StockItem) => {
     try {
       // Validate numeric fields before sending to API
-      if (isNaN(itemData.cat_no)) {
+      if (isNaN(Number(itemData.cat_no))) {
         throw new Error('Catalog number must be a valid number');
       }
-      
-      if (isNaN(itemData.quantity) || itemData.quantity <= 0) {
+     
+      if (isNaN(Number(itemData.quantity)) || Number(itemData.quantity) <= 0) {
         throw new Error('Quantity must be a positive number');
       }
-      
-      if (isNaN(itemData.mrp) || itemData.mrp <= 0) {
+     
+      if (isNaN(Number(itemData.mrp)) || Number(itemData.mrp) <= 0) {
         throw new Error('MRP must be a positive number');
       }
-      
-      if (itemData.w_rate !== null && (isNaN(Number(itemData.w_rate)) || Number(itemData.w_rate) < 0)) {
+     
+      if (itemData.w_rate !== null && itemData.w_rate !== undefined && (isNaN(Number(itemData.w_rate)) || Number(itemData.w_rate) < 0)) {
         throw new Error('Wholesale rate must be a valid number');
       }
-      
-      if (itemData.selling_price !== null && (isNaN(Number(itemData.selling_price)) || Number(itemData.selling_price) < 0)) {
+     
+      if (itemData.selling_price !== null && itemData.selling_price !== undefined && 
+          (isNaN(Number(itemData.selling_price)) || Number(itemData.selling_price) < 0)) {
         throw new Error('Selling price must be a valid number');
       }
-      
+     
       const response = await api.post('/items', itemData);
       return response.data;
     } catch (error: any) {
       console.error('Error adding stock item:', error);
+     
+      // If it's an error we threw for validation, preserve the message
+      if (error.message && !error.response) {
+        throw {
+          response: {
+            data: { error: error.message },
+            status: 400
+          }
+        };
+      }
+     
+      // Otherwise, format and throw the API error
+      throw error;
+    }
+  },
+ 
+  // Get all items for a user
+  getUserItems: async (userId: number) => {
+    try {
+      if (isNaN(userId) || userId <= 0) {
+        throw new Error('Invalid user ID');
+      }
+     
+      const response = await api.get(`/items/user/${userId}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching user items:', error);
+      const formattedError = formatError(error);
+      throw formattedError;
+    }
+  },
+
+  // Update an existing item
+  updateItem: async (itemId: string, itemData: Partial<StockItem>) => {
+    try {
+      // Validate required fields
+      if (itemData.cat_no !== undefined && isNaN(Number(itemData.cat_no))) {
+        throw new Error('Catalog number must be a valid number');
+      }
+      
+      if (itemData.quantity !== undefined && (isNaN(Number(itemData.quantity)) || Number(itemData.quantity) <= 0)) {
+        throw new Error('Quantity must be a positive number');
+      }
+      
+      if (itemData.mrp !== undefined && (isNaN(Number(itemData.mrp)) || Number(itemData.mrp) <= 0)) {
+        throw new Error('MRP must be a positive number');
+      }
+      
+      // Validate optional fields
+      if (itemData.w_rate !== undefined && itemData.w_rate !== null && 
+          (isNaN(Number(itemData.w_rate)) || Number(itemData.w_rate) < 0)) {
+        throw new Error('Wholesale rate must be a valid number');
+      }
+      
+      if (itemData.selling_price !== undefined && itemData.selling_price !== null && 
+          (isNaN(Number(itemData.selling_price)) || Number(itemData.selling_price) < 0)) {
+        throw new Error('Selling price must be a valid number');
+      }
+      
+      if (itemData.lot_no !== undefined && itemData.lot_no !== null && isNaN(Number(itemData.lot_no))) {
+        throw new Error('Lot number must be a valid number');
+      }
+      
+      const response = await api.put(`/items/${itemId}`, itemData);
+      return response.data;
+    } catch (error: any) {
+      console.error('Error updating item:', error);
       
       // If it's an error we threw for validation, preserve the message
       if (error.message && !error.response) {
@@ -112,18 +182,14 @@ export const itemsApi = {
       throw error;
     }
   },
- 
-  // Get all items for a user
-  getUserItems: async (userId: number) => {
+  
+  // Delete an item
+  deleteItem: async (itemId: string) => {
     try {
-      if (isNaN(userId) || userId <= 0) {
-        throw new Error('Invalid user ID');
-      }
-      
-      const response = await api.get(`/items/user/${userId}`);
+      const response = await api.delete(`/items/${itemId}`);
       return response.data;
     } catch (error) {
-      console.error('Error fetching user items:', error);
+      console.error('Error deleting item:', error);
       const formattedError = formatError(error);
       throw formattedError;
     }
