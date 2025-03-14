@@ -15,6 +15,27 @@
       "when": 1741905358425,
       "tag": "0001_aspiring_ender_wiggin",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1741982964381,
+      "tag": "0002_yummy_titania",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1741983098987,
+      "tag": "0003_confused_hex",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1741983650232,
+      "tag": "0004_legal_slyde",
+      "breakpoints": true
     }
   ]
 }

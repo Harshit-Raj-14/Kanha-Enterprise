@@ -21,9 +21,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     <div className="flex h-screen">
       {/* Sidebar */}
       <aside className="w-72 bg-white text-gray-800 border-r border-gray-200 p-6 shadow-sm overflow-hidden flex flex-col">
-        <Link href="/dashboard" className="text-2xl font-bold text-center block mb-8">
+        <Link 
+          href="/dashboard" 
+          className="text-2xl font-bold text-center block mb-8"
+        >
           Dashboard
         </Link>
+
         {/* Main Navigation */}
         <nav className="space-y-4">
           <Link
@@ -36,16 +40,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           >
             📦 Stocks
           </Link>
+
           <Link
-            href="/dashboard/stocks-entry"
+            href="/dashboard/add-stocks"
             className={`block p-3 text-lg font-medium transition-colors -mx-6 px-6 ${
-              isActive("/dashboard/stocks-entry")
+              isActive("/dashboard/add-stocks")
                 ? "bg-blue-50 text-blue-700 border-l-4 border-blue-700"
                 : "hover:bg-gray-50"
             }`}
           >
-            📦 Add Items
+            ➕ Add Items
           </Link>
+
           <Link
             href="/dashboard/invoices"
             className={`block p-3 text-lg font-medium transition-colors -mx-6 px-6 ${
@@ -54,7 +60,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 : "hover:bg-gray-50"
             }`}
           >
-            🧾 Invoices
+            📝 Invoices
+          </Link>
+
+          <Link
+            href="/dashboard/make-invoice"
+            className={`block p-3 text-lg font-medium transition-colors -mx-6 px-6 ${
+              isActive("/dashboard/make-invoice")
+                ? "bg-blue-50 text-blue-700 border-l-4 border-blue-700"
+                : "hover:bg-gray-50"
+            }`}
+          >
+            🧾 Make Invoice
           </Link>
         </nav>
        

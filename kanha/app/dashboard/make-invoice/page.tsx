@@ -2,7 +2,7 @@
 import { useAuth } from "../../context/AuthContext";
 import ProtectedRoute from "../../components/ProtectedRoute";
 
-export default function ProfilesPage() {
+export default function MakeInvoicesPage() {
   const { user } = useAuth();
   return (
     <ProtectedRoute>

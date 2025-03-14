@@ -2,57 +2,79 @@
 
 Table users {
   id integer [primary key]
-  shop_name varchar [not null]
-  email varchar [unique, not null]
-  password_hash varchar [not null]
-  created_at timestamp
+  shop_name varchar(100) [not null]
+  email varchar(150) [unique, not null]
+  password_hash varchar(255) [not null]
+  created_at timestamp 
 }
 
 Table items {
   id integer [primary key]
   user_id integer [not null] // References users.id
   cat_no integer [unique, not null]
-  product_name varchar [not null]
+  product_name varchar(255) [not null]
   lot_no integer
   quantity integer [not null]
-  w_rate decimal [not null] // Wholesale rate
-  selling_price decimal [not null]
-  mrp decimal [not null]
-  created_at timestamp
+  w_rate decimal(10,2) 
+  selling_price decimal(10,2) 
+  mrp decimal(10,2) [not null]
+  created_at timestamp 
 }
 
 Table invoices {
-  invoice_id varchar(50) [primary key] // Format: MPK/25-26/10001
+  id varchar(50) [primary key] // Unique invoice ID
   user_id integer [not null] // References users.id
-  party_name varchar [not null]
+  party_name varchar(255) [not null]
   order_no integer [unique, not null] 
-  address varchar
-  city varchar
-  state varchar
-  pincode varchar(10) // Alphanumeric support
+  address varchar(500)
+  city varchar(100)
+  state varchar(100)
+  pincode varchar(10)
   gstin varchar(15)
-  created_at timestamp
+  road_permit varchar
+  hsn_code integer
+  payment_mode varchar
+  adjustment_percent decimal(5,2)
+  cgst decimal(5,2)
+  sgst decimal(5,2)
+  igst decimal(5,2)
+  created_at timestamp 
 }
 
-Table invoice_items {
+Table carts {
   id integer [primary key]
-  invoice_id varchar(50) [not null] // References invoices.invoice_id
+  invoice_id varchar(50) [not null] // References invoices.id
+  cart_total decimal(10,2) [not null]
+  net_amount decimal(10,2)
+  net_payable_amount decimal(10,2)
+}
+
+Table cart_items {
+  id integer [primary key]
+  cart_id integer [not null] // References carts.id
   item_id integer [not null] // References items.id
   quantity integer [not null]
-  price decimal [not null] // Ensuring price is always recorded
+  selling_price decimal(10,2) [not null]
+  total decimal(10,2) [not null]
 }
 
-Table stock_movements { // NEW TABLE
+Table stock_movements {
   id integer [primary key]
   item_id integer [not null] // References items.id
   type varchar(20) [not null] // ('in', 'out', 'return')
-  quantity integer [not null]
-  created_at timestamp
+  selected_quantity integer [not null]
+  created_at timestamp 
 }
 
 // Foreign Key References
 Ref: items.user_id > users.id
 Ref: invoices.user_id > users.id
-Ref: invoice_items.invoice_id > invoices.invoice_id
-Ref: invoice_items.item_id > items.id
+Ref: carts.invoice_id > invoices.id
+Ref: cart_items.cart_id > carts.id
+Ref: cart_items.item_id > items.id
 Ref: stock_movements.item_id > items.id
+
+// Indexes
+// Index: items.cat_no
+// Index: invoices.order_no
+// Index: carts.invoice_id
