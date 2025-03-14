@@ -18,8 +18,8 @@ export const items = pgTable('items', {
     product_name: varchar('product_name', { length: 255 }).notNull(),
     lot_no: integer('lot_no'),
     quantity: integer('quantity').notNull(),
-    w_rate: decimal('w_rate', { precision: 10, scale: 2 }).notNull(),
-    selling_price: decimal('selling_price', { precision: 10, scale: 2 }).notNull(),
+    w_rate: decimal('w_rate', { precision: 10, scale: 2 }),
+    selling_price: decimal('selling_price', { precision: 10, scale: 2 }),
     mrp: decimal('mrp', { precision: 10, scale: 2 }).notNull(),
     created_at: timestamp('created_at', { withTimezone: true }).defaultNow(),
 });
@@ -35,6 +35,7 @@ export const invoices = pgTable('invoices', {
     state: varchar('state', { length: 100 }),
     pincode: varchar('pincode', { length: 10 }),
     gstin: varchar('gstin', { length: 15 }),
+    road_permit: varchar('road_permit'),
     created_at: timestamp('created_at', { withTimezone: true }).defaultNow(),
 });
 

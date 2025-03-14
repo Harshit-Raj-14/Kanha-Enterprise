@@ -5,7 +5,7 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import { users, items, invoices, invoiceItems, stockMovements } from '../db/schema';
 
 const router = Router();
-const pool = new Pool({ connectionString: `${process.env.DATABASE_URL}`, ssl: { rejectUnauthorized: false } });
+const pool = new Pool({ connectionString: `${process.env.DATABASE_URL}`, ssl: { rejectUnauthorized: false }, connectionTimeoutMillis: 70000,  max: 3 });
 const db = drizzle(pool);
 
 // Error handler for database queries

@@ -37,6 +37,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             📦 Stocks
           </Link>
           <Link
+            href="/dashboard/stocks-entry"
+            className={`block p-3 text-lg font-medium transition-colors -mx-6 px-6 ${
+              isActive("/dashboard/stocks-entry")
+                ? "bg-blue-50 text-blue-700 border-l-4 border-blue-700"
+                : "hover:bg-gray-50"
+            }`}
+          >
+            📦 Add Items
+          </Link>
+          <Link
             href="/dashboard/invoices"
             className={`block p-3 text-lg font-medium transition-colors -mx-6 px-6 ${
               isActive("/dashboard/invoices")

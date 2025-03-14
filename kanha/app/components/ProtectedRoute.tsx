@@ -11,16 +11,16 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   const { isAuthenticated } = useAuth();
   const router = useRouter();
 
-  useEffect(() => {
-    if (!isAuthenticated) {
-      router.push('/login');
-    }
-  }, [isAuthenticated, router]);
+  // useEffect(() => {
+  //   if (!isAuthenticated) {
+  //     router.push('/login');
+  //   }
+  // }, [isAuthenticated, router]);
 
-  // Show nothing while checking authentication
-  if (!isAuthenticated) {
-    return null;
-  }
+  // // Show nothing while checking authentication
+  // if (!isAuthenticated) {
+  //   return null;
+  // }
 
   return <>{children}</>;
 }

@@ -8,6 +8,13 @@
       "when": 1741723750301,
       "tag": "0000_groovy_freak",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1741905358425,
+      "tag": "0001_aspiring_ender_wiggin",
+      "breakpoints": true
     }
   ]
 }

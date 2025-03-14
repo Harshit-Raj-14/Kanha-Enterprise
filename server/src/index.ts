@@ -11,11 +11,11 @@ const PORT = process.env.PORT || 5050;
 const app = express();
 app.use(express.json());
 
-const allowedOrigins = ['http://localhost:3000'];
-const options: cors.CorsOptions = {
-  origin: allowedOrigins
-};
-app.use(cors(options));
+// const allowedOrigins = ['http://localhost:3000'];
+// const options: cors.CorsOptions = {
+//   origin: allowedOrigins
+// };
+app.use(cors());
 
 // Use Morgan for logging HTTP requests
 app.use(morgan('dev'));
