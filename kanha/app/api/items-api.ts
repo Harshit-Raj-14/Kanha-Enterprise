@@ -27,6 +27,7 @@ interface ApiError {
   message: string;
   status: number;
   data?: any;
+  originalError?: any;
 }
 
 // Add an interceptor to include the auth token in requests
@@ -52,19 +53,22 @@ const formatError = (error: any): ApiError => {
     return {
       message: error.response.data?.error || 'An error occurred while processing your request',
       status: error.response.status,
-      data: error.response.data
+      data: error.response.data,
+      originalError: error
     };
   } else if (error.request) {
     // The request was made but no response was received
     return {
       message: 'No response received from server. Please check your connection',
-      status: 0
+      status: 0,
+      originalError: error
     };
   } else {
     // Something happened in setting up the request that triggered an Error
     return {
       message: error.message || 'An unexpected error occurred',
-      status: 0
+      status: 0,
+      originalError: error
     };
   }
 };
@@ -111,7 +115,7 @@ export const itemsApi = {
         };
       }
      
-      // Otherwise, format and throw the API error
+      // Otherwise, throw the original error to preserve all details
       throw error;
     }
   },
@@ -163,10 +167,25 @@ export const itemsApi = {
         throw new Error('Lot number must be a valid number');
       }
       
+      console.log(`Updating item ${itemId} with data:`, itemData);
       const response = await api.put(`/items/${itemId}`, itemData);
       return response.data;
     } catch (error: any) {
       console.error('Error updating item:', error);
+      
+      // If the error has a response from the server
+      if (error.response && error.response.data) {
+        console.log('Server error response:', error.response.data);
+        
+        // Check for specific catalog number error
+        if (error.response.data.error && 
+            (error.response.data.error.includes('catalog number') || 
+             error.response.data.error.includes('cat_no'))) {
+          
+          // Enhance the error with a more specific message
+          error.response.data.error = 'A product with this catalog number already exists.';
+        }
+      }
       
       // If it's an error we threw for validation, preserve the message
       if (error.message && !error.response) {
@@ -178,7 +197,7 @@ export const itemsApi = {
         };
       }
       
-      // Otherwise, format and throw the API error
+      // Throw the error with all its properties
       throw error;
     }
   },
@@ -186,10 +205,52 @@ export const itemsApi = {
   // Delete an item
   deleteItem: async (itemId: string) => {
     try {
+      console.log(`Deleting item with ID: ${itemId}`);
       const response = await api.delete(`/items/${itemId}`);
+      console.log('Delete response:', response.data);
       return response.data;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error deleting item:', error);
+      
+      // Log more details for debugging
+      if (error.response) {
+        console.error('Server response:', error.response.status, error.response.data);
+      } else if (error.request) {
+        console.error('No response received:', error.request);
+      } else {
+        console.error('Error setting up request:', error.message);
+      }
+      
+      const formattedError = formatError(error);
+      throw formattedError;
+    }
+  },
+
+  // Search for items
+  searchItems: async (userId: number, searchType: 'cat_no' | 'product_name', searchTerm: string) => {
+    try {
+      if (isNaN(userId) || userId <= 0) {
+        throw new Error('Invalid user ID');
+      }
+      
+      if (!searchTerm.trim()) {
+        throw new Error('Search term cannot be empty');
+      }
+      
+      console.log(`Searching for items with userId=${userId}, searchType=${searchType}, searchTerm=${searchTerm}`);
+      
+      const response = await api.get('/items/search', {
+        params: {
+          userId,
+          searchType,
+          searchTerm
+        }
+      });
+      
+      console.log('Search response:', response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error('Error searching items:', error);
       const formattedError = formatError(error);
       throw formattedError;
     }

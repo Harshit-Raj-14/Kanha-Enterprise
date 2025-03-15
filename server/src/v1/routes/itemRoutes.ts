@@ -1,6 +1,6 @@
 import express, { Request, Response, Router } from 'express';
 import { Pool } from 'pg';
-import { and, eq, ne } from 'drizzle-orm';
+import { and, eq, ne, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { users, items, invoices, stockMovements } from '../db/schema';
 
@@ -214,29 +214,6 @@ router.get('/user/:userId', async (req: Request, res: Response): Promise<any> =>
     }
 });
 
-// GET - Fetch a specific item by ID
-router.get('/:itemId', async (req: Request, res: Response): Promise<any> => {
-    try {
-        const itemId = parseInt(req.params.itemId);
-        
-        if (isNaN(itemId) || itemId <= 0) {
-            return res.status(400).json({ error: 'Invalid item ID format.' });
-        }
-        
-        const itemResult = await db.select()
-            .from(items)
-            .where(eq(items.id, itemId))
-            .limit(1);
-            
-        if (itemResult.length === 0) {
-            return res.status(404).json({ error: 'Item not found.' });
-        }
-        
-        res.status(200).json(itemResult[0]);
-    } catch (err) {
-        handleQueryError(err, res);
-    }
-});
 
 // PUT - Update an existing item
 router.put('/:itemId', async (req: Request, res: Response): Promise<any> => {
@@ -272,24 +249,26 @@ router.put('/:itemId', async (req: Request, res: Response): Promise<any> => {
         
         // Only validate fields that are being updated
         
-        // Validate catalog number if provided
+        // Check if the new catalog number conflicts with another product
         if (cat_no !== undefined) {
             const catNoError = validateNumeric(cat_no, 'Catalog number', true);
             if (catNoError) {
                 validationErrors.push(catNoError);
             } else {
-                // Check if the new catalog number conflicts with another product
-                if (cat_no !== existingItem[0].cat_no) {
+                // Only check for conflicts if cat_no is being changed
+                if (Number(cat_no) !== Number(existingItem[0].cat_no)) {
                     const conflictItem = await db.select({ id: items.id })
                         .from(items)
                         .where(and(
                             eq(items.cat_no, Number(cat_no)),
-                            ne(items.id, itemId)
+                            ne(items.id, itemId) // Use proper Drizzle ORM operators
                         ))
                         .limit(1);
                         
                     if (conflictItem.length > 0) {
-                        validationErrors.push('A product with this catalog number already exists.');
+                        return res.status(400).json({ 
+                            error: 'A product with this catalog number already exists.' 
+                        });
                     }
                 }
             }
@@ -429,5 +408,105 @@ router.delete('/:itemId', async (req: Request, res: Response): Promise<any> => {
         handleQueryError(err, res);
     }
 });
+
+// GET - Find items by prefix search (cat_no or product_name)
+router.get('/search', async (req: Request, res: Response): Promise<void> => {
+    try {
+      console.log('Search request received with query params:', req.query);
+      
+      const userId = req.query.userId ? parseInt(req.query.userId as string) : null;
+      const searchType = req.query.searchType as string;
+      const searchTerm = req.query.searchTerm as string;
+      
+      console.log('Parsed search parameters:', { userId, searchType, searchTerm });
+      
+      // Validate required parameters
+      if (!userId || !searchType || !searchTerm) {
+        res.status(400).json({ 
+          error: 'Missing required parameters: userId, searchType, and searchTerm are required.' 
+        });
+        return;
+      }
+      
+      // Validate userId
+      if (isNaN(userId) || userId <= 0) {
+        res.status(400).json({ error: 'Invalid user ID format.' });
+        return;
+      }
+      
+      // Validate searchType
+      if (searchType !== 'cat_no' && searchType !== 'product_name') {
+        res.status(400).json({ error: 'Search type must be either "cat_no" or "product_name".' });
+        return;
+      }
+      
+      let searchResults;
+      
+      if (searchType === 'cat_no') {
+        // For catalog number search (numeric)
+        const catNo = Number(searchTerm);
+        
+        if (isNaN(catNo)) {
+          res.status(400).json({ error: 'Catalog number must be a number.' });
+          return;
+        }
+        
+        console.log('Searching for catalog number prefix:', searchTerm);
+        
+        // Convert catalog number to string for prefix matching
+        searchResults = await db.select()
+          .from(items)
+          .where(and(
+            eq(items.user_id, userId),
+            sql`CAST(${items.cat_no} AS TEXT) LIKE ${searchTerm + '%'}`
+          ));
+      } else {
+        // For product name search (text)
+        console.log('Searching for product name prefix:', searchTerm);
+        
+        searchResults = await db.select()
+          .from(items)
+          .where(and(
+            eq(items.user_id, userId),
+            sql`${items.product_name} ILIKE ${searchTerm + '%'}`
+          ));
+      }
+      
+      console.log(`Found ${searchResults.length} matching items`);
+      
+      res.status(200).json({
+        count: searchResults.length,
+        items: searchResults
+      });
+    } catch (err) {
+      console.error('Error in search endpoint:', err);
+      handleQueryError(err, res);
+    }
+  });
+  
+  // Make sure this comes AFTER all other routes that use item IDs
+  // GET - Fetch a specific item by ID
+  router.get('/:itemId', async (req: Request, res: Response): Promise<any> => {
+    try {
+      const itemId = parseInt(req.params.itemId);
+      
+      if (isNaN(itemId) || itemId <= 0) {
+        return res.status(400).json({ error: 'Invalid item ID format.' });
+      }
+      
+      const itemResult = await db.select()
+        .from(items)
+        .where(eq(items.id, itemId))
+        .limit(1);
+        
+      if (itemResult.length === 0) {
+        return res.status(404).json({ error: 'Item not found.' });
+      }
+      
+      res.status(200).json(itemResult[0]);
+    } catch (err) {
+      handleQueryError(err, res);
+    }
+  });
 
 export default router;

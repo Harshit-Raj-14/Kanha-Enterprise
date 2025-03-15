@@ -97,9 +97,24 @@ const EditItemModal: React.FC<EditItemModalProps> = ({
       setIsSaving(true);
       await onSave(formData);
       onClose();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to save item:', err);
-      if (err instanceof Error) {
+      
+      // Check for specific error message related to catalog number
+      if (err.response && err.response.data && err.response.data.error) {
+        const errorMsg = err.response.data.error;
+        
+        if (errorMsg.includes('catalog number') || errorMsg.includes('cat_no')) {
+          // Set specific error for catalog number field
+          setErrors(prev => ({ 
+            ...prev, 
+            cat_no: 'A product with this catalog number already exists' 
+          }));
+        } else {
+          setErrors(prev => ({ ...prev, form: errorMsg }));
+        }
+      } else if (err instanceof Error) {
+        // Handle other types of errors
         setErrors(prev => ({ ...prev, form: err.message }));
       } else {
         setErrors(prev => ({ ...prev, form: 'Failed to save changes' }));
