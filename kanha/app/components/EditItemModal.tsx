@@ -6,10 +6,11 @@ interface Item {
   cat_no: string;
   product_name: string;
   lot_no?: string;
+  hsn_no?: string; // Added new HSN field
   quantity: number;
-  mrp: string;
-  w_rate?: string;
-  selling_price?: string;
+  mrp: number;
+  w_rate?: number;
+  selling_price?: number;
 }
 
 interface EditItemModalProps {
@@ -55,33 +56,25 @@ const EditItemModal: React.FC<EditItemModalProps> = ({
       newErrors.product_name = 'Product name is required';
     }
     
-    if (!formData.cat_no) {
+    if (!formData.cat_no || formData.cat_no.trim() === '') {
       newErrors.cat_no = 'Catalog number is required';
-    } else if (isNaN(Number(formData.cat_no)) || Number(formData.cat_no) <= 0) {
-      newErrors.cat_no = 'Catalog number must be a positive number';
     }
     
     if (!formData.quantity || formData.quantity <= 0) {
       newErrors.quantity = 'Quantity must be a positive number';
     }
     
-    if (!formData.mrp) {
-      newErrors.mrp = 'MRP is required';
-    } else if (isNaN(Number(formData.mrp)) || Number(formData.mrp) <= 0) {
+    if (!formData.mrp || formData.mrp <= 0) {
       newErrors.mrp = 'MRP must be a positive number';
     }
     
     // Optional fields validation
-    if (formData.w_rate && (isNaN(Number(formData.w_rate)) || Number(formData.w_rate) <= 0)) {
+    if (formData.w_rate !== undefined && formData.w_rate !== null && formData.w_rate <= 0) {
       newErrors.w_rate = 'Wholesale rate must be a positive number';
     }
     
-    if (formData.selling_price && (isNaN(Number(formData.selling_price)) || Number(formData.selling_price) <= 0)) {
+    if (formData.selling_price !== undefined && formData.selling_price !== null && formData.selling_price <= 0) {
       newErrors.selling_price = 'Selling price must be a positive number';
-    }
-    
-    if (formData.lot_no && isNaN(Number(formData.lot_no))) {
-      newErrors.lot_no = 'Lot number must be a valid number';
     }
     
     setErrors(newErrors);
@@ -188,6 +181,19 @@ const EditItemModal: React.FC<EditItemModalProps> = ({
             </div>
             
             <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">HSN Number</label>
+              <input
+                type="text"
+                name="hsn_no"
+                value={formData.hsn_no || ''}
+                onChange={handleChange}
+                className={`w-full px-3 py-2 border rounded-md ${errors.hsn_no ? 'border-red-500' : 'border-gray-300'}`}
+                disabled={isSaving}
+              />
+              {errors.hsn_no && <p className="mt-1 text-sm text-red-600">{errors.hsn_no}</p>}
+            </div>
+            
+            <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Quantity</label>
               <input
                 type="number"
@@ -204,11 +210,13 @@ const EditItemModal: React.FC<EditItemModalProps> = ({
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">MRP (₹)</label>
               <input
-                type="text"
+                type="number"
                 name="mrp"
                 value={formData.mrp}
                 onChange={handleChange}
                 className={`w-full px-3 py-2 border rounded-md ${errors.mrp ? 'border-red-500' : 'border-gray-300'}`}
+                step="0.01"
+                min="0.01"
                 disabled={isSaving}
               />
               {errors.mrp && <p className="mt-1 text-sm text-red-600">{errors.mrp}</p>}
@@ -217,11 +225,13 @@ const EditItemModal: React.FC<EditItemModalProps> = ({
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Wholesale Rate (₹)</label>
               <input
-                type="text"
+                type="number"
                 name="w_rate"
                 value={formData.w_rate || ''}
                 onChange={handleChange}
                 className={`w-full px-3 py-2 border rounded-md ${errors.w_rate ? 'border-red-500' : 'border-gray-300'}`}
+                step="0.01"
+                min="0.01"
                 disabled={isSaving}
               />
               {errors.w_rate && <p className="mt-1 text-sm text-red-600">{errors.w_rate}</p>}
@@ -230,11 +240,13 @@ const EditItemModal: React.FC<EditItemModalProps> = ({
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Selling Price (₹)</label>
               <input
-                type="text"
+                type="number"
                 name="selling_price"
                 value={formData.selling_price || ''}
                 onChange={handleChange}
                 className={`w-full px-3 py-2 border rounded-md ${errors.selling_price ? 'border-red-500' : 'border-gray-300'}`}
+                step="0.01"
+                min="0.01"
                 disabled={isSaving}
               />
               {errors.selling_price && <p className="mt-1 text-sm text-red-600">{errors.selling_price}</p>}

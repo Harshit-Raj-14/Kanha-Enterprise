@@ -2,7 +2,7 @@ import express, { Request, Response, Router } from 'express';
 import { Pool } from 'pg';
 import { and, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { users, items, invoices, stockMovements } from '../db/schema';
+import { users, items, invoices } from '../../db/schema';
 
 const router = Router();
 const pool = new Pool({ connectionString: `${process.env.DATABASE_URL}`, ssl: { rejectUnauthorized: false }, connectionTimeoutMillis: 70000,  max: 3 });
@@ -71,7 +71,7 @@ router.post('/login', async (req: Request, res: Response) => {
 
 
 // GET: Fetch all items of a user
-router.get('/items/:userId', async (req: Request, res: Response) => {
+router.get('/:userId/items', async (req: Request, res: Response) => {
     const { userId } = req.params;
 
     try {
@@ -83,35 +83,12 @@ router.get('/items/:userId', async (req: Request, res: Response) => {
 });
 
 // GET: Fetch all invoices of a user
-router.get('/invoices/:userId', async (req: Request, res: Response) => {
+router.get('/:userId/invoices', async (req: Request, res: Response) => {
     const { userId } = req.params;
 
     try {
         const userInvoices = await db.select().from(invoices).where(eq(invoices.user_id, Number(userId)));
         res.status(200).json(userInvoices);
-    } catch (error) {
-        handleQueryError(error, res);
-    }
-});
-
-// GET: Fetch all stock movements of a user
-router.get('/stock-movements/:userId', async (req: Request, res: Response) => {
-    const { userId } = req.params;
-
-    try {
-        const userStockMovements = await db
-            .select({
-                id: stockMovements.id,
-                item_id: stockMovements.item_id,
-                type: stockMovements.type,
-                quantity: stockMovements.quantity,
-                created_at: stockMovements.created_at
-            })
-            .from(stockMovements)
-            .innerJoin(items, eq(stockMovements.item_id, items.id))
-            .where(eq(items.user_id, Number(userId)));
-
-        res.status(200).json(userStockMovements);
     } catch (error) {
         handleQueryError(error, res);
     }

@@ -37,7 +37,7 @@ export default function LoginPage() {
     <div className="flex flex-col min-h-screen bg-gray-100">
       {/* Sticky Navbar - now greyish with bold text */}
       <nav className="fixed top-0 w-full bg-gray-700 text-white py-4 text-center text-lg font-bold shadow-md z-10">
-        Stock Management System
+        Kanha Enterprises
       </nav>
      
       {/* Main content area - adjusted to position login form slightly above center */}

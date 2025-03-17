@@ -10,6 +10,7 @@ interface StockItemForm {
   cat_no: string;
   product_name: string;
   lot_no: string;
+  hsn_no: string; // Added new HSN field
   quantity: string;
   w_rate: string;
   selling_price: string;
@@ -21,6 +22,7 @@ interface ValidationErrors {
   cat_no?: string;
   product_name?: string;
   lot_no?: string;
+  hsn_no?: string; // Added new HSN field
   quantity?: string;
   w_rate?: string;
   selling_price?: string;
@@ -42,6 +44,7 @@ export default function StocksEntryPage() {
     cat_no: "",
     product_name: "",
     lot_no: "",
+    hsn_no: "", // Added new HSN field
     quantity: "",
     w_rate: "",
     selling_price: "",
@@ -56,9 +59,6 @@ export default function StocksEntryPage() {
     // Required fields
     if (!stockItem.cat_no) {
       newErrors.cat_no = "Catalog number is required";
-      isValid = false;
-    } else if (!/^\d+$/.test(stockItem.cat_no)) {
-      newErrors.cat_no = "Catalog number must be a valid number";
       isValid = false;
     }
 
@@ -84,11 +84,6 @@ export default function StocksEntryPage() {
     }
 
     // Optional fields with validation
-    if (stockItem.lot_no && !/^\d+$/.test(stockItem.lot_no)) {
-      newErrors.lot_no = "Lot number must be a valid number";
-      isValid = false;
-    }
-
     if (stockItem.w_rate && !/^\d*\.?\d+$/.test(stockItem.w_rate)) {
       newErrors.w_rate = "Wholesale rate must be a valid number";
       isValid = false;
@@ -142,9 +137,10 @@ export default function StocksEntryPage() {
       // Prepare the data with correct types
       const itemData = {
         user_id: user.id,
-        cat_no: parseInt(stockItem.cat_no),
+        cat_no: stockItem.cat_no,
         product_name: stockItem.product_name,
-        lot_no: stockItem.lot_no ? parseInt(stockItem.lot_no) : null,
+        lot_no: stockItem.lot_no ? stockItem.lot_no : null,
+        hsn_no: stockItem.hsn_no ? stockItem.hsn_no : null,
         quantity: parseInt(stockItem.quantity),
         w_rate: stockItem.w_rate ? parseFloat(stockItem.w_rate) : null,
         selling_price: stockItem.selling_price ? parseFloat(stockItem.selling_price) : null,
@@ -172,6 +168,7 @@ export default function StocksEntryPage() {
         cat_no: "",
         product_name: "",
         lot_no: "",
+        hsn_no: "",
         quantity: "",
         w_rate: "",
         selling_price: "",
@@ -300,6 +297,27 @@ export default function StocksEntryPage() {
                   />
                   {errors.lot_no && (
                     <p className="text-red-500 text-xs italic mt-1">{errors.lot_no}</p>
+                  )}
+                </div>
+                
+                {/* HSN Number - New field */}
+                <div className="mb-4">
+                  <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="hsn_no">
+                    HSN Number
+                  </label>
+                  <input
+                    id="hsn_no"
+                    name="hsn_no"
+                    type="text"
+                    placeholder="Enter HSN number"
+                    value={stockItem.hsn_no}
+                    onChange={handleChange}
+                    className={`shadow appearance-none border ${
+                      errors.hsn_no ? "border-red-500" : "border-gray-300"
+                    } rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500`}
+                  />
+                  {errors.hsn_no && (
+                    <p className="text-red-500 text-xs italic mt-1">{errors.hsn_no}</p>
                   )}
                 </div>
                 

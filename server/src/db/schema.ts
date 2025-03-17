@@ -14,9 +14,10 @@ export const users = pgTable('users', {
 export const items = pgTable('items', {
     id: serial('id').primaryKey(),
     user_id: integer('user_id').notNull().references(() => users.id),
-    cat_no: integer('cat_no').unique().notNull(),
+    cat_no: varchar('cat_no', { length: 20 }).unique().notNull(),
     product_name: varchar('product_name', { length: 255 }).notNull(),
-    lot_no: integer('lot_no'),
+    lot_no: varchar('lot_no', { length: 20 }),
+    hsn_no: varchar('hsn_no', { length: 20 }),
     quantity: integer('quantity').notNull(),
     w_rate: decimal('w_rate', { precision: 10, scale: 2 }),
     selling_price: decimal('selling_price', { precision: 10, scale: 2 }),
@@ -28,25 +29,29 @@ export const items = pgTable('items', {
 
 // Invoices Table
 export const invoices = pgTable('invoices', {
-    id: varchar('id', { length: 50 }).primaryKey(),
+    id: serial('id').primaryKey(),
+    invoice_no: varchar('invoice_no', { length: 10 }).unique().notNull(),
     user_id: integer('user_id').notNull().references(() => users.id),
-    party_name: varchar('party_name', { length: 255 }).notNull(),
-    order_no: integer('order_no').unique().notNull(),
-    address: varchar('address', { length: 500 }),
+    party_name: varchar('party_name', { length: 100 }).notNull(),
+    order_no: varchar('order_no', { length: 20 }).unique(),
+    doctor_name: varchar('doctor_name', { length: 100 }),
+    patient_name: varchar('patient_name', { length: 100 }),
+    address: varchar('address', { length: 255 }),
     city: varchar('city', { length: 100 }),
     state: varchar('state', { length: 100 }),
     pincode: varchar('pincode', { length: 10 }),
+    mobile_no: integer('mobile_no'),
     gstin: varchar('gstin', { length: 15 }),
-    road_permit: varchar('road_permit'),
-    hsn_code: integer('hsn_code'),
-    payment_mode: varchar('payment_mode'),
+    road_permit: varchar('road_permit', { length: 20 }),
+    payment_mode: varchar('payment_mode', { length: 20 }),
     adjustment_percent: decimal('adjustment_percent', { precision: 5, scale: 2 }),
     cgst: decimal('cgst', { precision: 5, scale: 2 }),
     sgst: decimal('sgst', { precision: 5, scale: 2 }),
     igst: decimal('igst', { precision: 5, scale: 2 }),
     created_at: timestamp('created_at', { withTimezone: true }).defaultNow(),
 }, (table) => ({
-    orderNoIndex: index('order_no_idx').on(table.order_no),
+    invoiceNoIndex: index('invoice_no_idx').on(table.invoice_no),
+    userIdIndex: index('user_id_idx').on(table.user_id),
 }));
 
 // Carts Table
@@ -54,7 +59,7 @@ export const carts = pgTable('carts', {
     id: serial('id').primaryKey(),
     invoice_id: integer('invoice_id').notNull().references(() => invoices.id),
     cart_total: decimal('cart_total', { precision: 10, scale: 2 }).notNull(),
-    net_amount: decimal('net_amount'),
+    net_amount: decimal('net_amount', { precision: 10, scale: 2 }).notNull(),
     net_payable_amount: decimal('net_payable_amount', { precision: 10, scale: 2 }),  //after round off
 }, (table) => ({
     invoiceIdIndex: index('invoice_id_idx').on(table.invoice_id),
@@ -65,19 +70,13 @@ export const cartItems = pgTable('cart_items', {
     id: serial('id').primaryKey(),
     cart_id: integer('cart_id').notNull().references(() => carts.id),
     item_id: integer('item_id').notNull().references(() => items.id),
+    hsn_code: varchar('hsn_code', { length: 20 }),
+    addon_percent: decimal('addon_percent', { precision: 5, scale: 2 }),
     selected_quantity: integer('selected_quantity').notNull(),
     selling_price: decimal('selling_price', { precision: 10, scale: 2 }).notNull(),
     total: decimal('total', { precision: 10, scale: 2 }).notNull(),
 });
 
-// Stock Movements Table
-export const stockMovements = pgTable('stock_movements', {
-    id: serial('id').primaryKey(),
-    item_id: integer('item_id').notNull().references(() => items.id),
-    type: varchar('type', { length: 20 }).notNull(), // 'in', 'out', 'return'
-    quantity: integer('quantity').notNull(),
-    created_at: timestamp('created_at', { withTimezone: true }).defaultNow(),
-});
 
 // Type Definitions
 export type User = InferSelectModel<typeof users>;
@@ -95,5 +94,3 @@ export type InsertCart = InferInsertModel<typeof carts>;
 export type CartItem = InferSelectModel<typeof cartItems>;
 export type InsertCartItem = InferInsertModel<typeof cartItems>;
 
-export type StockMovement = InferSelectModel<typeof stockMovements>;
-export type InsertStockMovement = InferInsertModel<typeof stockMovements>;

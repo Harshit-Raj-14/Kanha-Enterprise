@@ -7,17 +7,22 @@ import { toast } from "react-hot-toast";
 import DeleteConfirmation from "../../components/DeleteConfirmation";
 import EditItemModal from "../../components/EditItemModal";
 
-// Define the StockItem type to match the Item interface expected by your components
-interface StockItem {
+// Updated StockItem interface to match the Item interface used in EditItemModal
+interface Item {
   id: string;
-  user_id: number;
   cat_no: string;
   product_name: string;
   lot_no?: string;
+  hsn_no?: string;
   quantity: number;
-  w_rate?: string;
-  selling_price?: string;
-  mrp: string;
+  mrp: number;
+  w_rate?: number;
+  selling_price?: number;
+}
+
+// Define an extended interface for items with additional fields from API
+interface StockItem extends Item {
+  user_id: number;
   created_at?: string;
 }
 
@@ -36,7 +41,7 @@ export default function FindItemPage() {
   
   // State for edit modal
   const [editModalOpen, setEditModalOpen] = useState(false);
-  const [itemToEdit, setItemToEdit] = useState<StockItem | null>(null);
+  const [itemToEdit, setItemToEdit] = useState<Item | null>(null);
   
   // State for notifications
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
@@ -68,17 +73,18 @@ export default function FindItemPage() {
       
       console.log("Search results:", result);
       
-      // Convert all numeric values to strings to match the Item interface expected by the modals
-      const formattedItems = (result.items || []).map(item => ({
+      // Map the API results to our interface - ensuring proper types
+      const formattedItems = (result.items || []).map((item: any) => ({
         id: String(item.id),
         user_id: Number(item.user_id),
-        cat_no: String(item.cat_no),
+        cat_no: item.cat_no,
         product_name: item.product_name,
-        lot_no: item.lot_no ? String(item.lot_no) : undefined,
+        lot_no: item.lot_no || undefined,
+        hsn_no: item.hsn_no || undefined,
         quantity: Number(item.quantity),
-        w_rate: item.w_rate ? String(item.w_rate) : undefined,
-        selling_price: item.selling_price ? String(item.selling_price) : undefined,
-        mrp: String(item.mrp),
+        w_rate: item.w_rate !== null ? Number(item.w_rate) : undefined,
+        selling_price: item.selling_price !== null ? Number(item.selling_price) : undefined,
+        mrp: Number(item.mrp),
         created_at: item.created_at
       }));
       
@@ -99,7 +105,7 @@ export default function FindItemPage() {
   };
 
   // Format currency values
-  const formatCurrency = (value: string | number | null | undefined) => {
+  const formatCurrency = (value: number | null | undefined) => {
     if (value === null || value === undefined) return '-';
     return `₹${Number(value).toFixed(2)}`;
   };
@@ -157,21 +163,33 @@ export default function FindItemPage() {
   // Handle edit button click
   const handleEditClick = (item: StockItem) => {
     console.log("Edit button clicked for item:", item);
-    // Create a copy of the item to avoid reference issues
-    const itemCopy = { ...item };
-    setItemToEdit(itemCopy);
+    // Create a copy of the item to avoid reference issues, omitting user_id and created_at
+    const { user_id, created_at, ...itemForEdit } = item;
+    setItemToEdit(itemForEdit);
     setEditModalOpen(true);
   };
   
   // Handle save changes
-  const handleSaveChanges = async (updatedItem: StockItem) => {
+  const handleSaveChanges = async (updatedItem: Item) => {
     console.log("Saving changes for item:", updatedItem);
     try {
-      await itemsApi.updateItem(updatedItem.id, updatedItem);
+      // We need to add the user_id back from the original item for the API call
+      const itemToUpdate = items.find(item => item.id === updatedItem.id);
+      if (!itemToUpdate) {
+        throw new Error("Item not found in the current list");
+      }
+      
+      // Merge the updated fields with the required user_id
+      const fullUpdatedItem = {
+        ...updatedItem,
+        user_id: itemToUpdate.user_id
+      };
+      
+      await itemsApi.updateItem(updatedItem.id, fullUpdatedItem);
       
       // Update the item in the list
       setItems(prevItems => prevItems.map(item => 
-        item.id === updatedItem.id ? updatedItem : item
+        item.id === updatedItem.id ? { ...item, ...updatedItem } : item
       ));
       
       // Show success notification
@@ -275,6 +293,9 @@ export default function FindItemPage() {
                         Lot No
                       </th>
                       <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        HSN No
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Quantity
                       </th>
                       <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -302,6 +323,9 @@ export default function FindItemPage() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           {item.lot_no || '-'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {item.hsn_no || '-'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           {item.quantity}

@@ -12,13 +12,14 @@ const api = axios.create({
 interface StockItem {
   id?: string;
   user_id: number;
-  cat_no: string | number;
+  cat_no: string;  // Changed to string only
   product_name: string;
-  lot_no?: string | number | null;
+  lot_no?: string | null;  // Changed to string only
+  hsn_no?: string | null;  // Added new field
   quantity: number;
-  w_rate?: string | number | null;
-  selling_price?: string | number | null;
-  mrp: string | number;
+  w_rate?: number | null;
+  selling_price?: number | null;
+  mrp: number;
   created_at?: string;
 }
 
@@ -78,33 +79,39 @@ export const itemsApi = {
   // Add a new stock item
   addStockItem: async (itemData: StockItem) => {
     try {
-      // Validate numeric fields before sending to API
-      if (isNaN(Number(itemData.cat_no))) {
-        throw new Error('Catalog number must be a valid number');
+      // Validate required string fields
+      if (!itemData.cat_no || itemData.cat_no.trim() === '') {
+        throw new Error('Catalog number is required');
       }
-     
+      
+      if (!itemData.product_name || itemData.product_name.trim() === '') {
+        throw new Error('Product name is required');
+      }
+      
+      // Validate numeric fields
       if (isNaN(Number(itemData.quantity)) || Number(itemData.quantity) <= 0) {
         throw new Error('Quantity must be a positive number');
       }
-     
+      
       if (isNaN(Number(itemData.mrp)) || Number(itemData.mrp) <= 0) {
         throw new Error('MRP must be a positive number');
       }
-     
-      if (itemData.w_rate !== null && itemData.w_rate !== undefined && (isNaN(Number(itemData.w_rate)) || Number(itemData.w_rate) < 0)) {
+      
+      if (itemData.w_rate !== null && itemData.w_rate !== undefined && 
+          (isNaN(Number(itemData.w_rate)) || Number(itemData.w_rate) < 0)) {
         throw new Error('Wholesale rate must be a valid number');
       }
-     
+      
       if (itemData.selling_price !== null && itemData.selling_price !== undefined && 
           (isNaN(Number(itemData.selling_price)) || Number(itemData.selling_price) < 0)) {
         throw new Error('Selling price must be a valid number');
       }
-     
+      
       const response = await api.post('/items', itemData);
       return response.data;
     } catch (error: any) {
       console.error('Error adding stock item:', error);
-     
+      
       // If it's an error we threw for validation, preserve the message
       if (error.message && !error.response) {
         throw {
@@ -114,19 +121,19 @@ export const itemsApi = {
           }
         };
       }
-     
+      
       // Otherwise, throw the original error to preserve all details
       throw error;
     }
   },
- 
+  
   // Get all items for a user
   getUserItems: async (userId: number) => {
     try {
       if (isNaN(userId) || userId <= 0) {
         throw new Error('Invalid user ID');
       }
-     
+      
       const response = await api.get(`/items/user/${userId}`);
       return response.data;
     } catch (error) {
@@ -139,9 +146,13 @@ export const itemsApi = {
   // Update an existing item
   updateItem: async (itemId: string, itemData: Partial<StockItem>) => {
     try {
-      // Validate required fields
-      if (itemData.cat_no !== undefined && isNaN(Number(itemData.cat_no))) {
-        throw new Error('Catalog number must be a valid number');
+      // Validate required fields if provided
+      if (itemData.cat_no !== undefined && itemData.cat_no.trim() === '') {
+        throw new Error('Catalog number cannot be empty');
+      }
+      
+      if (itemData.product_name !== undefined && itemData.product_name.trim() === '') {
+        throw new Error('Product name cannot be empty');
       }
       
       if (itemData.quantity !== undefined && (isNaN(Number(itemData.quantity)) || Number(itemData.quantity) <= 0)) {
@@ -163,9 +174,7 @@ export const itemsApi = {
         throw new Error('Selling price must be a valid number');
       }
       
-      if (itemData.lot_no !== undefined && itemData.lot_no !== null && isNaN(Number(itemData.lot_no))) {
-        throw new Error('Lot number must be a valid number');
-      }
+      // No need to validate lot_no and hsn_no as they are strings
       
       console.log(`Updating item ${itemId} with data:`, itemData);
       const response = await api.put(`/items/${itemId}`, itemData);
@@ -251,6 +260,18 @@ export const itemsApi = {
       return response.data;
     } catch (error: any) {
       console.error('Error searching items:', error);
+      const formattedError = formatError(error);
+      throw formattedError;
+    }
+  },
+  
+  // Get a specific item by ID
+  getItemById: async (itemId: string) => {
+    try {
+      const response = await api.get(`/items/${itemId}`);
+      return response.data;
+    } catch (error) {
+      console.error(`Error fetching item with ID ${itemId}:`, error);
       const formattedError = formatError(error);
       throw formattedError;
     }

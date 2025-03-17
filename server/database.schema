@@ -5,47 +5,51 @@ Table users {
   shop_name varchar(100) [not null]
   email varchar(150) [unique, not null]
   password_hash varchar(255) [not null]
-  created_at timestamp 
+  created_at timestamp
 }
 
 Table items {
   id integer [primary key]
   user_id integer [not null] // References users.id
-  cat_no integer [unique, not null]
+  cat_no varchar(20) [unique, not null]
   product_name varchar(255) [not null]
-  lot_no integer
+  lot_no varchar(20)
+  hsn_no varchar(20)
   quantity integer [not null]
-  w_rate decimal(10,2) 
-  selling_price decimal(10,2) 
+  w_rate decimal(10,2)
+  selling_price decimal(10,2)
   mrp decimal(10,2) [not null]
-  created_at timestamp 
+  created_at timestamp
 }
 
 Table invoices {
-  id varchar(50) [primary key] // Unique invoice ID
+  id integer [primary key]
+  invoice_no varchar(10) [unique, not null]
   user_id integer [not null] // References users.id
-  party_name varchar(255) [not null]
-  order_no integer [unique, not null] 
-  address varchar(500)
+  party_name varchar(100) [not null]
+  order_no varchar(20) [unique]
+  doctor_name varchar(100)
+  patient_name varchar(100)
+  address varchar(255)
   city varchar(100)
   state varchar(100)
   pincode varchar(10)
+  mobile_no integer
   gstin varchar(15)
-  road_permit varchar
-  hsn_code integer
-  payment_mode varchar
+  road_permit varchar(20)
+  payment_mode varchar(20)
   adjustment_percent decimal(5,2)
   cgst decimal(5,2)
   sgst decimal(5,2)
   igst decimal(5,2)
-  created_at timestamp 
+  created_at timestamp
 }
 
 Table carts {
   id integer [primary key]
-  invoice_id varchar(50) [not null] // References invoices.id
+  invoice_id integer [not null] // References invoices.id
   cart_total decimal(10,2) [not null]
-  net_amount decimal(10,2)
+  net_amount decimal(10,2) [not null]
   net_payable_amount decimal(10,2)
 }
 
@@ -53,17 +57,11 @@ Table cart_items {
   id integer [primary key]
   cart_id integer [not null] // References carts.id
   item_id integer [not null] // References items.id
-  quantity integer [not null]
+  hsn_code varchar(20)
+  addon_percent decimal(5,2)
+  selected_quantity integer [not null]
   selling_price decimal(10,2) [not null]
   total decimal(10,2) [not null]
-}
-
-Table stock_movements {
-  id integer [primary key]
-  item_id integer [not null] // References items.id
-  type varchar(20) [not null] // ('in', 'out', 'return')
-  selected_quantity integer [not null]
-  created_at timestamp 
 }
 
 // Foreign Key References
@@ -72,9 +70,11 @@ Ref: invoices.user_id > users.id
 Ref: carts.invoice_id > invoices.id
 Ref: cart_items.cart_id > carts.id
 Ref: cart_items.item_id > items.id
-Ref: stock_movements.item_id > items.id
 
 // Indexes
 // Index: items.cat_no
 // Index: invoices.order_no
+// Index: invoices.invoice_no
+// Index: invoices.user_id
+// Index: invoices.mobile_no
 // Index: carts.invoice_id
