@@ -99,6 +99,31 @@ const validateString = (value: any, fieldName: string, required: boolean = false
     return null;
 };
 
+// GET - Fetch a specific item by catalog number
+router.get('/cat-no/:catNo', async (req: Request, res: Response): Promise<any> => {
+    try {
+        const { catNo } = req.params;
+        
+        if (!catNo) {
+            return res.status(400).json({ error: 'Catalog number is required.' });
+        }
+        
+        const itemResult = await db.select()
+            .from(items)
+            .where(eq(items.cat_no, catNo))
+            .limit(1);
+            
+        if (itemResult.length === 0) {
+            return res.status(404).json({ message: 'Item not found' });
+        }
+        
+        res.status(200).json(itemResult[0]);
+    } catch (err) {
+        handleQueryError(err, res);
+    }
+});
+
+
 // POST - Add new stock item
 router.post('/', async (req: Request, res: Response): Promise<any> => {
     try {
