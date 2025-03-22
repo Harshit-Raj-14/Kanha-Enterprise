@@ -71,7 +71,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 : "hover:bg-gray-50"
             }`}
           >
-            📝 Invoices
+            🧾 Invoices
           </Link>
 
           <Link
@@ -82,7 +82,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 : "hover:bg-gray-50"
             }`}
           >
-            🧾 Make Invoice
+            📝 Make Invoice
           </Link>
         </nav>
        
