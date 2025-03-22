@@ -136,7 +136,7 @@ const PrintInvoice: React.FC<PrintInvoiceProps> = ({ invoiceData, cartData, onCl
               </div>
             </div>
             
-            <div className="invoice-title">TAX INVOICE</div>
+            <div className="invoice-title">GST INVOICE</div>
             
             <div className="invoice-details">
               <div className="invoice-details-column">
@@ -165,11 +165,14 @@ const PrintInvoice: React.FC<PrintInvoiceProps> = ({ invoiceData, cartData, onCl
               <thead>
                 <tr>
                   <th>S.No</th>
+                  <th>CAT No.</th>
                   <th>Product</th>
+                  <th>Lot No.</th>
                   <th>HSN</th>
-                  <th>Qty</th>
+                  <th>Expiry</th>
                   <th>MRP</th>
                   <th>Rate</th>
+                  <th>Qty</th>
                   <th>Amount</th>
                 </tr>
               </thead>
@@ -177,11 +180,14 @@ const PrintInvoice: React.FC<PrintInvoiceProps> = ({ invoiceData, cartData, onCl
                 {cartData.items.map((item, index) => (
                   <tr key={index}>
                     <td>{index + 1}</td>
+                    <td>{item.cat_no}</td>
                     <td>{item.product_name}</td>
+                    <td>{item.lot_no || 'N/A'}</td>
                     <td>{item.hsn_code || 'N/A'}</td>
-                    <td>{item.selected_quantity}</td>
+                    <td>{item.expiry || '31.12.9999'}</td>
                     <td>{formatCurrency(item.mrp)}</td>
                     <td>{formatCurrency(item.selling_price)}</td>
+                    <td>{item.selected_quantity}</td>
                     <td>{formatCurrency(item.total)}</td>
                   </tr>
                 ))}
@@ -236,16 +242,16 @@ const PrintInvoice: React.FC<PrintInvoiceProps> = ({ invoiceData, cartData, onCl
             <div className="terms">
               <strong>Terms & Conditions:</strong>
               <ol>
-                <li>Goods once sold will not be taken back.</li>
-                <li>Interest @18% p.a. will be charged if payment is not made within due date.</li>
-                <li>Subject to local jurisdiction.</li>
+                <li>If not paid within 30 days from the date of invoice.</li>
+                <li>If any claim for breakage/damage send with certificate of transporter to us within 90 days from date of invoice.</li>
+                <li>Complain if any send Patna HQ within 7 days of release of the consignment. Subject to Patna Jurisdiction only.</li>
+                <li>E & OE</li>
               </ol>
             </div>
             
             <div className="signature">
               <div className="signature-column">
-                <div>For {invoiceData.party_name}</div>
-                <div style={{ marginTop: '40px' }}>Authorized Signatory</div>
+              <img src="aosys-logo.png" alt="Aosys" style={{ width: '150px', height: 'auto' }} />
               </div>
               <div className="signature-column">
                 <div>For {invoiceData.user_shop_name || 'Your Shop Name'}</div>

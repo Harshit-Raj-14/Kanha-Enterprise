@@ -93,36 +93,41 @@ export const invoicesApi = {
   // Generate invoice number (usually server-side, but can be mocked here for now)
   getNextInvoiceNumber: async () => {
     try {
-      const response = await api.get('/invoices/next-invoice-number');
-      
-      // Store the latest invoice in localStorage for fallback use
-      localStorage.setItem('lastInvoiceNumber', response.data.invoice_no);
-  
-      return response.data.invoice_no;
+        const response = await api.get('/invoices/next-invoice-number');
+
+        // Store the latest invoice in localStorage for fallback use
+        localStorage.setItem('lastInvoiceNumber', response.data.invoice_no);
+
+        return response.data.invoice_no;
     } catch (error) {
-      console.error("Server unavailable, generating fallback invoice number");
-  
-      // Get last stored invoice from localStorage
-      let lastInvoice = localStorage.getItem('lastInvoiceNumber');
-  
-      if (lastInvoice) {
-        // Extract numeric part and increment safely
-        const parts = lastInvoice.split('/');
-        const numericPart = parseInt(parts[2], 10) + 1;
-        const nextInvoice = `MPK/${parts[1]}/${String(numericPart).padStart(5, '0')}`;
-  
-        // Update localStorage with the new fallback invoice
-        localStorage.setItem('lastInvoiceNumber', nextInvoice);
-  
-        return nextInvoice;
-      } else {
-        // If there's no last invoice stored, start from MPK/25-26/00001
+        console.error("Server unavailable, generating fallback invoice number");
+
+        // Get last stored invoice from localStorage
+        let lastInvoice = localStorage.getItem('lastInvoiceNumber');
+
+        if (lastInvoice) {
+            // Extract numeric part correctly using regex
+            const match = lastInvoice.match(/(\d+)$/);
+            
+            if (match) {
+                const numericPart = parseInt(match[1], 10) + 1;
+                const parts = lastInvoice.split('/');
+                const nextInvoice = `MPK/${parts[1]}/${String(numericPart).padStart(5, '0')}`;
+
+                // Update localStorage with the new fallback invoice
+                localStorage.setItem('lastInvoiceNumber', nextInvoice);
+                
+                return nextInvoice;
+            }
+        }
+
+        // If no last invoice is found, start from the default value
         const defaultInvoice = `MPK/25-26/00001`;
         localStorage.setItem('lastInvoiceNumber', defaultInvoice);
         return defaultInvoice;
-      }
     }
   },
+
 
   // Create a new invoice with cart
   createInvoice: async (invoiceData: InvoiceSubmitData) => {

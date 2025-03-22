@@ -24,19 +24,25 @@ router.get('/next-invoice-number', async (req: Request, res: Response) => {
             .limit(1);
 
         let nextInvoiceNumber = 'MPK/25-26/00001';
-        
+
         if (latestInvoices.length > 0) {
-            // Extract the numeric part and increment
             const lastInvoice = latestInvoices[0].invoice_no;
-            const numericPart = parseInt(lastInvoice.replace(/\D/g, ''), 10) + 1;
-            nextInvoiceNumber = `MPK/25-26/${numericPart.toString().padStart(5, '0')}`;
+
+            // Extract the numeric part at the end of the invoice number
+            const match = lastInvoice.match(/(\d+)$/);
+            
+            if (match) {
+                const numericPart = parseInt(match[1], 10) + 1;
+                nextInvoiceNumber = `MPK/25-26/${numericPart.toString().padStart(5, '0')}`;
+            }
         }
-        
+
         res.json({ invoice_no: nextInvoiceNumber });
     } catch (err) {
         handleQueryError(err, res);
     }
 });
+
 
 // Get item by cat_no
 router.get('/items/cat-no/:catNo', async (req: Request, res: Response) => {
