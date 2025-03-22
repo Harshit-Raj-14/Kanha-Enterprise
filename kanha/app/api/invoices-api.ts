@@ -72,7 +72,41 @@ export interface InvoiceSubmitData {
   cart: CartData;
 }
 
+
 // Invoice related API calls
+
+// Get all invoices for a user
+export const getUserInvoices = async (userId: number) => {
+  try {
+    const response = await api.get(`/invoices/user/${userId}`);
+    return response.data;
+  } catch (error: any) {
+    if (error.response) {
+      throw new Error(error.response.data.message || 'Failed to fetch invoices');
+    } else if (error.request) {
+      throw new Error('No response from server. Please try again later.');
+    } else {
+      throw new Error('Error fetching invoices. Please try again.');
+    }
+  }
+};
+
+// Delete an invoice
+export const deleteInvoice = async (invoiceId: number) => {
+  try {
+    const response = await api.delete(`/invoices/${invoiceId}`);
+    return response.data;
+  } catch (error: any) {
+    if (error.response) {
+      throw new Error(error.response.data.message || 'Failed to delete invoice');
+    } else if (error.request) {
+      throw new Error('No response from server. Please try again later.');
+    } else {
+      throw new Error('Error deleting invoice. Please try again.');
+    }
+  }
+};
+
 export const invoicesApi = {
   // Get item details by cat_no
   getItemByCatNo: async (catNo: string) => {
@@ -165,4 +199,4 @@ export const invoicesApi = {
 // Create an alias for backward compatibility
 export const invoiceService = invoicesApi;
 
-export default invoicesApi;
+export default {invoicesApi, getUserInvoices, deleteInvoice};

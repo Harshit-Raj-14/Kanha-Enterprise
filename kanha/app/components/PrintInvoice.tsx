@@ -30,6 +30,9 @@ const PrintInvoice: React.FC<PrintInvoiceProps> = ({ invoiceData, cartData, onCl
       return;
     }
 
+    // Get the current origin for making absolute URLs
+    const origin = window.location.origin;
+    
     printWindow.document.write(`
       <html>
         <head>
@@ -37,9 +40,14 @@ const PrintInvoice: React.FC<PrintInvoiceProps> = ({ invoiceData, cartData, onCl
           <style>
             body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
             .invoice-container { max-width: 800px; margin: 0 auto; }
+            .invoice-title { text-align: center; font-size: 1.5em; font-weight: bold; margin-bottom: 15px; }
+            .company-header { text-align: center; margin-bottom: 10px; }
+            .company-name { font-weight: bold; font-size: 1.3em; margin-bottom: 5px; }
+            .company-address { margin-bottom: 5px; }
+            .company-details { margin-bottom: 5px; }
+            .company-contact { margin-bottom: 5px; }
+            .separator-line { border-bottom: 1px solid #ddd; margin: 15px 0; }
             .invoice-header { display: flex; justify-content: space-between; margin-bottom: 20px; }
-            .company-info { font-weight: bold; font-size: 1.2em; }
-            .invoice-title { text-align: center; font-size: 1.5em; font-weight: bold; margin: 20px 0; }
             .invoice-details { display: flex; justify-content: space-between; margin-bottom: 20px; }
             .invoice-details-column { width: 48%; }
             table { width: 100%; border-collapse: collapse; }
@@ -55,9 +63,10 @@ const PrintInvoice: React.FC<PrintInvoiceProps> = ({ invoiceData, cartData, onCl
               @page { margin: 0.5cm; }
             }
           </style>
+          <base href="${origin}/" />
         </head>
         <body>
-          ${content.innerHTML}
+          ${content.innerHTML.replace(/src="\/aosys-logo.png"/g, `src="${origin}/aosys-logo.png"`)}
           <div style="text-align: center; margin-top: 20px;">
             <button onclick="window.print();" style="padding: 10px 20px;">Print Invoice</button>
             <button onclick="window.close();" style="padding: 10px 20px; margin-left: 10px;">Close</button>
@@ -126,20 +135,20 @@ const PrintInvoice: React.FC<PrintInvoiceProps> = ({ invoiceData, cartData, onCl
         
         <div className="border border-gray-300 p-8 rounded" ref={printRef}>
           <div className="invoice-container">
-            <div className="invoice-header">
-              <div className="company-info">
-                {invoiceData.user_shop_name || 'Your Shop Name'}
-              </div>
-              <div>
-                <div><strong>Invoice No:</strong> {invoiceData.invoice_no}</div>
-                <div><strong>Date:</strong> {new Date().toLocaleDateString()}</div>
-              </div>
-            </div>
-            
+            {/* New Header Structure */}
             <div className="invoice-title">GST INVOICE</div>
             
-            <div className="invoice-details">
-              <div className="invoice-details-column">
+            <div className="company-header">
+              <div className="company-name">M/s Kanha Enterprises</div>
+              <div className="company-address">402A. Kedar Kunj Appartment, Road No. 1 Church Road, Patna, Patna, Bihar, 800013</div>
+              <div className="company-details">GSTIN - 10BCSPK7334LIZB , DL:248/248A/248B/248C</div>
+              <div className="company-contact">Ph: 7979970439, 8271525257</div>
+            </div>
+            
+            <div className="separator-line"></div>
+            
+            <div className="invoice-header">
+              <div>
                 <div><strong>Party Name:</strong> {invoiceData.party_name}</div>
                 {invoiceData.address && <div><strong>Address:</strong> {invoiceData.address}</div>}
                 {(invoiceData.city || invoiceData.state || invoiceData.pincode) && (
@@ -152,7 +161,9 @@ const PrintInvoice: React.FC<PrintInvoiceProps> = ({ invoiceData, cartData, onCl
                 {invoiceData.mobile_no && <div><strong>Mobile:</strong> {invoiceData.mobile_no}</div>}
                 {invoiceData.gstin && <div><strong>GSTIN:</strong> {invoiceData.gstin}</div>}
               </div>
-              <div className="invoice-details-column">
+              <div>
+                <div><strong>Invoice No:</strong> {invoiceData.invoice_no}</div>
+                <div><strong>Date:</strong> {new Date().toLocaleDateString()}</div>
                 {invoiceData.order_no && <div><strong>Order No:</strong> {invoiceData.order_no}</div>}
                 {invoiceData.doctor_name && <div><strong>Doctor:</strong> {invoiceData.doctor_name}</div>}
                 {invoiceData.patient_name && <div><strong>Patient:</strong> {invoiceData.patient_name}</div>}
@@ -251,10 +262,10 @@ const PrintInvoice: React.FC<PrintInvoiceProps> = ({ invoiceData, cartData, onCl
             
             <div className="signature">
               <div className="signature-column">
-              <img src="aosys-logo.png" alt="Aosys" style={{ width: '150px', height: 'auto' }} />
+                <img src="/aosys-logo.png" alt="Aosys" style={{ width: '150px', height: 'auto' }} />
               </div>
               <div className="signature-column">
-                <div>For {invoiceData.user_shop_name || 'Your Shop Name'}</div>
+                <div>For M/s Kanha Enterprises</div>
                 <div style={{ marginTop: '40px' }}>Authorized Signatory</div>
               </div>
             </div>

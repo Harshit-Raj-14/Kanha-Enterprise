@@ -245,4 +245,82 @@ router.get('/user/:userId', async (req: Request, res: Response) => {
     }
 });
 
+// Add this route to your existing invoiceRoutes.ts file
+
+// Delete invoice by ID
+router.delete('/:id', async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        
+        // Start a transaction
+        await pool.query('BEGIN');
+        
+        // First, get the invoice details to verify it exists
+        const invoiceResult = await db.select()
+            .from(invoices)
+            .where(eq(invoices.id, parseInt(id, 10)));
+        
+        if (!invoiceResult.length) {
+            await pool.query('ROLLBACK');
+            res.status(404).json({ message: 'Invoice not found' });
+            return;
+        }
+        
+        // Get cart details to delete associated cart items
+        const cartResult = await db.select()
+            .from(carts)
+            .where(eq(carts.invoice_id, parseInt(id, 10)));
+        
+        if (cartResult.length) {
+            const cartId = cartResult[0].id;
+            
+            // Get cart items to update inventory
+            const cartItemsResult = await db.select()
+                .from(cartItems)
+                .where(eq(cartItems.cart_id, cartId));
+            
+            // Return items to inventory
+            for (const item of cartItemsResult) {
+                // Get current item quantity
+                const itemResult = await db.select({ quantity: items.quantity })
+                    .from(items)
+                    .where(eq(items.id, item.item_id));
+                    
+                if (itemResult.length > 0) {
+                    const currentQuantity = Number(itemResult[0].quantity);
+                    const newQuantity = currentQuantity + item.selected_quantity;
+                    
+                    // Update item inventory (increase quantity)
+                    await db.update(items)
+                        .set({
+                            quantity: newQuantity
+                        })
+                        .where(eq(items.id, item.item_id));
+                }
+            }
+            
+            // Delete cart items
+            await db.delete(cartItems)
+                .where(eq(cartItems.cart_id, cartId));
+            
+            // Delete cart
+            await db.delete(carts)
+                .where(eq(carts.id, cartId));
+        }
+        
+        // Delete invoice
+        await db.delete(invoices)
+            .where(eq(invoices.id, parseInt(id, 10)));
+        
+        // Commit transaction
+        await pool.query('COMMIT');
+        
+        res.status(200).json({ message: 'Invoice deleted successfully' });
+    } catch (err) {
+        // Rollback in case of error
+        await pool.query('ROLLBACK');
+        handleQueryError(err, res);
+    }
+});
+
 export default router;
