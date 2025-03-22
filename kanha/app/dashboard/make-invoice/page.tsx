@@ -6,7 +6,7 @@ import InvoiceForm from '../../components/InvoiceForm';
 import ItemForm from '../../components/ItemForm';
 import CartDisplay from '../../components/CartDisplay';
 import PrintInvoice from '../../components/PrintInvoice';
-import { InvoiceFormData, CartItemData, CartData, invoicesApi, invoiceService } from '../../api/invoices-api';
+import { InvoiceFormData, CartItemData, CartData, invoicesApi } from '../../api/invoices-api';
 
 export default function MakeInvoicesPage() {
   const { user } = useAuth();
@@ -115,7 +115,7 @@ export default function MakeInvoicesPage() {
       };
       
       // Submit invoice data
-      const result = await invoiceService.createInvoice(invoiceSubmitData);
+      const result = await invoicesApi.createInvoice(invoiceSubmitData);
       
       // Show print invoice modal
       setShowPrintModal(true);
@@ -149,7 +149,7 @@ export default function MakeInvoicesPage() {
     }));
     
     // Fetch new invoice number
-    invoiceService.getNextInvoiceNumber().then(invoiceNo => {
+    invoicesApi.getNextInvoiceNumber().then(invoiceNo => {
       setInvoiceData(prev => ({ ...prev, invoice_no: invoiceNo }));
     });
   };

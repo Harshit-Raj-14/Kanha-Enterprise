@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../../context/AuthContext";
 import ProtectedRoute from "../../components/ProtectedRoute";
 import Link from "next/link";
@@ -144,7 +144,12 @@ export default function InvoicesPage() {
 
   // Handle edit invoice
   const handleEditInvoice = (invoiceId: number) => {
-    router.push(`/invoices/edit/${invoiceId}`);
+    // For now, we'll just alert that this feature is coming soon
+    // You can implement proper routing when you have the edit page ready
+    alert("Edit functionality will be implemented in a future update. Currently in development.");
+    
+    // Uncomment this when you have the edit route ready
+    // router.push(`/dashboard/invoices/edit/${invoiceId}`);
   };
 
   // Calculate paginated invoices
