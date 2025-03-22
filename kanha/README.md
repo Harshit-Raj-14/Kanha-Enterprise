@@ -8,6 +8,11 @@ MPK/25-26/00001
 
 
 TO DO NOW
-Cat no update stock in case same cat no.
 manually add item as well -> first add that item using add stock
 print invoice -> get the format correct
+
+
+
+fix invoice no, - len 25
+
+phone no length  -10

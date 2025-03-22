@@ -1,6 +1,6 @@
 import express, { Request, Response, Router } from 'express';
 import { Pool } from 'pg';
-import { and, eq, ne, sql } from 'drizzle-orm';
+import { and, eq, ne, sql, desc } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { users, items } from '../../db/schema';
 
@@ -22,16 +22,16 @@ const handleQueryError = (err: any, res: Response) => {
     console.error('Error executing query:', err);
     
     // Check for specific PostgreSQL error codes
-    if (err.code === '23505') { // Unique violation
-        if (err.constraint && err.constraint.includes('cat_no')) {
-            return res.status(409).json({ 
-                error: 'A product with this catalog number already exists.' 
-            });
-        }
-        return res.status(409).json({ 
-            error: 'A record with these details already exists.' 
-        });
-    }
+    // if (err.code === '23505') { // Unique violation
+    //     if (err.constraint && err.constraint.includes('cat_no')) {
+    //         return res.status(409).json({ 
+    //             error: 'A product with this catalog number already exists.' 
+    //         });
+    //     }
+    //     return res.status(409).json({ 
+    //         error: 'A record with these details already exists.' 
+    //     });
+    // }
     
     if (err.code === '23503') { // Foreign key violation
         return res.status(400).json({ 
@@ -110,11 +110,11 @@ router.get('/cat-no/:catNo', async (req: Request, res: Response): Promise<any> =
         
         const itemResult = await db.select()
             .from(items)
-            .where(eq(items.cat_no, catNo))
-            .limit(1);
+            .where(eq(items.cat_no, catNo));
+            // .limit(1);
             
         if (itemResult.length === 0) {
-            return res.status(404).json({ message: 'Item not found' });
+            return res.status(404).json({ message: 'Item not found.' });
         }
         
         res.status(200).json(itemResult[0]);
@@ -124,7 +124,7 @@ router.get('/cat-no/:catNo', async (req: Request, res: Response): Promise<any> =
 });
 
 
-// POST - Add new stock item
+// POST - Add new stock item or update existing one
 router.post('/', async (req: Request, res: Response): Promise<any> => {
     try {
         const {
@@ -205,24 +205,49 @@ router.post('/', async (req: Request, res: Response): Promise<any> => {
         }
         
         // Check if catalog number already exists
-        const existingItem = await db.select({ id: items.id })
+        const existingItem = await db.select()
             .from(items)
             .where(eq(items.cat_no, cat_no))
             .limit(1);
             
         if (existingItem.length > 0) {
-            return res.status(409).json({ 
-                error: 'A product with this catalog number already exists.' 
+            // Item exists, update it with new values and add to the quantity
+            const existingItemData = existingItem[0];
+            const newQuantity = Number(existingItemData.quantity) + Number(quantity);
+            
+            // Prepare update data
+            const updateData = {
+                product_name,
+                quantity: newQuantity,
+                mrp: String(mrp),
+                // For optional fields, only include them if they have values
+                ...(lot_no !== undefined && lot_no !== null && lot_no !== '' && { lot_no }),
+                ...(hsn_no !== undefined && hsn_no !== null && hsn_no !== '' && { hsn_no }),
+                ...(w_rate !== undefined && w_rate !== null && w_rate !== '' && { w_rate: Number(w_rate) }),
+                ...(selling_price !== undefined && selling_price !== null && selling_price !== '' && 
+                    { selling_price: Number(selling_price) }),
+            };
+            
+            // Update the existing item
+            const updatedItem = await db.update(items)
+                .set(updateData)
+                .where(eq(items.id, existingItemData.id))
+                .returning();
+            
+            return res.status(200).json({
+                message: 'Stock item updated successfully',
+                item: updatedItem[0],
+                wasUpdated: true
             });
         }
 
-        // Insert the new item
+        // Insert the new item if it doesn't exist
         const newItem = await db.insert(items).values({
             user_id,
             cat_no,
             product_name,
-            quantity,
-            mrp,
+            quantity: Number(quantity),
+            mrp: String(mrp),
             // For optional fields, only include them if they have values
             ...(lot_no !== undefined && lot_no !== null && lot_no !== '' && { lot_no }),
             ...(hsn_no !== undefined && hsn_no !== null && hsn_no !== '' && { hsn_no }),
@@ -233,7 +258,8 @@ router.post('/', async (req: Request, res: Response): Promise<any> => {
        
         res.status(201).json({
             message: 'Stock item added successfully',
-            item: newItem[0]
+            item: newItem[0],
+            wasUpdated: false
         });
     } catch (err) {
         handleQueryError(err, res);
@@ -547,6 +573,64 @@ router.get('/search', async (req: Request, res: Response): Promise<void> => {
       }
       
       res.status(200).json(itemResult[0]);
+    } catch (err) {
+      handleQueryError(err, res);
+    }
+  });
+
+
+// GET - Fetch items for a user with pagination
+router.get('/user/paginated/:userId', async (req: Request, res: Response): Promise<any> => {
+    try {
+      const userId = parseInt(req.params.userId);
+      
+      // Pagination parameters
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 10;
+      const offset = (page - 1) * limit;
+      
+      if (isNaN(userId) || userId <= 0) {
+        res.status(400).json({ error: 'Invalid user ID format. User ID must be a positive number.' });
+        return;
+      }
+      
+      // Verify user exists before querying items
+      const userExists = await db.select({ id: users.id })
+        .from(users)
+        .where(eq(users.id, userId))
+        .limit(1);
+        
+      if (userExists.length === 0) {
+        return res.status(404).json({ error: 'User not found.' });
+      }
+      
+      // Get total count for pagination metadata
+      const countResult = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(items)
+        .where(eq(items.user_id, userId));
+      
+      const totalItems = Number(countResult[0].count);
+      
+      // Get paginated items with default sorting by created_at desc (newest first)
+      const userItems = await db
+        .select()
+        .from(items)
+        .where(eq(items.user_id, userId))
+        .limit(limit)
+        .offset(offset)
+        .orderBy(desc(items.created_at)); // Always sort by newest first
+      
+      // Make sure this response includes the pagination object
+      res.status(200).json({
+        items: userItems,
+        pagination: {
+          totalItems,
+          itemsPerPage: limit,
+          currentPage: page,
+          totalPages: Math.ceil(totalItems / limit)
+        }
+      });
     } catch (err) {
       handleQueryError(err, res);
     }

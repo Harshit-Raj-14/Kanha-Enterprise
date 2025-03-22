@@ -1,5 +1,5 @@
 "use client";
-import { useState, ChangeEvent, FormEvent } from "react";
+import { useState, ChangeEvent, FormEvent, useRef } from "react";
 import { useAuth } from "../../context/AuthContext";
 import ProtectedRoute from "../../components/ProtectedRoute";
 import { itemsApi } from "../../api/items-api";
@@ -10,7 +10,7 @@ interface StockItemForm {
   cat_no: string;
   product_name: string;
   lot_no: string;
-  hsn_no: string; // Added new HSN field
+  hsn_no: string;
   quantity: string;
   w_rate: string;
   selling_price: string;
@@ -22,7 +22,7 @@ interface ValidationErrors {
   cat_no?: string;
   product_name?: string;
   lot_no?: string;
-  hsn_no?: string; // Added new HSN field
+  hsn_no?: string;
   quantity?: string;
   w_rate?: string;
   selling_price?: string;
@@ -44,13 +44,17 @@ export default function StocksEntryPage() {
     cat_no: "",
     product_name: "",
     lot_no: "",
-    hsn_no: "", // Added new HSN field
+    hsn_no: "",
     quantity: "",
     w_rate: "",
     selling_price: "",
     mrp: ""
   });
-
+  
+  // State for confirmation dialog
+  const [showConfirmDialog, setShowConfirmDialog] = useState<boolean>(false);
+  const [pendingSubmitData, setPendingSubmitData] = useState<any>(null);
+  
   // Validate form input
   const validateForm = (): boolean => {
     const newErrors: ValidationErrors = {};
@@ -115,6 +119,28 @@ export default function StocksEntryPage() {
       [name]: value
     });
   };
+  
+  // Check if the item exists before submitting
+  const checkItemExists = async (cat_no: string) => {
+    try {
+      console.log(`Checking if item with catalog number ${cat_no} exists`);
+      const response = await itemsApi.getItemByCatNo(cat_no);
+      console.log('Item found:', response);
+      // If we get a response, the item exists
+      return { exists: true, item: response };
+    } catch (error: any) {
+      console.error(`Error checking if item ${cat_no} exists:`, error);
+      
+      // If we get a 404, the item doesn't exist (this is expected for new items)
+      if (error.status === 404 || (error.response && error.response.status === 404)) {
+        console.log(`Item with catalog number ${cat_no} not found (new item)`);
+        return { exists: false, item: null };
+      }
+      
+      // For other errors, throw with more details
+      throw new Error(`Failed to check if item exists: ${error.message || 'Unknown error'}`);
+    }
+  };
 
   // Handle form submission
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
@@ -130,7 +156,7 @@ export default function StocksEntryPage() {
       toast.error("User authentication required");
       return;
     }
-
+    
     try {
       setIsSubmitting(true);
       
@@ -146,22 +172,98 @@ export default function StocksEntryPage() {
         selling_price: stockItem.selling_price ? parseFloat(stockItem.selling_price) : null,
         mrp: parseFloat(stockItem.mrp)
       };
-
-      await itemsApi.addStockItem(itemData);
       
-      toast.success("Stock item added successfully", {
+      console.log("Checking if item exists with catalog number:", itemData.cat_no);
+      
+      // Check if item with this catalog number already exists
+      try {
+        const itemCheck = await checkItemExists(itemData.cat_no);
+        
+        if (itemCheck.exists) {
+          console.log("Item exists, showing confirmation dialog");
+          // Store the data for later submission and show confirmation dialog
+          setPendingSubmitData(itemData);
+          setShowConfirmDialog(true);
+          setIsSubmitting(false);
+          return;
+        }
+        
+        console.log("Item does not exist, proceeding with add");
+        // If item doesn't exist, proceed with adding it
+        await submitItemData(itemData, false);
+        
+      } catch (checkError: any) {
+        console.error("Error during item existence check:", checkError);
+        // If the error is a 404, that means the item doesn't exist, which is fine
+        if (checkError.status === 404 || (checkError.response && checkError.response.status === 404)) {
+          console.log("Item not found (404), proceeding with add");
+          await submitItemData(itemData, false);
+        } else {
+          // For other errors, show a toast and stop
+          setIsSubmitting(false);
+          toast.error(checkError.message || "Failed to check if item exists", {
+            style: {
+              background: '#EF4444',
+              color: '#fff',
+              padding: '16px',
+              borderRadius: '10px',
+            },
+          });
+        }
+      }
+      
+    } catch (error: any) {
+      console.error("Error in overall form submission:", error);
+      setIsSubmitting(false);
+      
+      toast.error(error.message || "An error occurred while processing your request", {
         style: {
-          background: '#10B981',
+          background: '#EF4444',
           color: '#fff',
           padding: '16px',
           borderRadius: '10px',
         },
-        iconTheme: {
-          primary: '#fff',
-          secondary: '#10B981',
-        },
-        duration: 3000,
       });
+    }
+  };
+  
+  // Handle actual data submission after confirmation (or direct submission for new items)
+  const submitItemData = async (itemData: any, isUpdate: boolean) => {
+    try {
+      setIsSubmitting(true);
+      
+      const response = await itemsApi.addStockItem(itemData);
+      
+      // Display appropriate success message
+      if (isUpdate) {
+        toast.success(`Stock item updated successfully. New quantity: ${response.item.quantity}`, {
+          style: {
+            background: '#10B981',
+            color: '#fff',
+            padding: '16px',
+            borderRadius: '10px',
+          },
+          iconTheme: {
+            primary: '#fff',
+            secondary: '#10B981',
+          },
+          duration: 3000,
+        });
+      } else {
+        toast.success("Stock item added successfully", {
+          style: {
+            background: '#10B981',
+            color: '#fff',
+            padding: '16px',
+            borderRadius: '10px',
+          },
+          iconTheme: {
+            primary: '#fff',
+            secondary: '#10B981',
+          },
+          duration: 3000,
+        });
+      }
       
       // Reset the form
       setStockItem({
@@ -175,28 +277,9 @@ export default function StocksEntryPage() {
         mrp: ""
       });
     } catch (error: any) {
-      console.error("Error adding stock:", error);
+      console.error("Error adding/updating stock:", error);
       
-      // Handle specific error cases
-      if (error.response?.status === 409) {
-        setErrors({
-          ...errors,
-          cat_no: "A product with this catalog number already exists"
-        });
-        toast.error("A product with this catalog number already exists", {
-          style: {
-            background: '#EF4444',
-            color: '#fff',
-            padding: '16px',
-            borderRadius: '10px',
-          },
-          iconTheme: {
-            primary: '#fff',
-            secondary: '#EF4444',
-          },
-          duration: 4000,
-        });
-      } else if (error.response?.data?.error) {
+      if (error.response?.data?.error) {
         toast.error(error.response.data.error, {
           style: {
             background: '#EF4444',
@@ -206,7 +289,7 @@ export default function StocksEntryPage() {
           },
         });
       } else {
-        toast.error("Failed to add stock item", {
+        toast.error("Failed to add/update stock item", {
           style: {
             background: '#EF4444',
             color: '#fff',
@@ -218,6 +301,23 @@ export default function StocksEntryPage() {
     } finally {
       setIsSubmitting(false);
     }
+  };
+  
+  // Handle confirmation dialog responses
+  const handleConfirmUpdate = () => {
+    // User confirmed update - submit the data
+    if (pendingSubmitData) {
+      submitItemData(pendingSubmitData, true);
+    }
+    setShowConfirmDialog(false);
+    setPendingSubmitData(null);
+  };
+  
+  const handleCancelUpdate = () => {
+    // User canceled update - just close the dialog
+    setShowConfirmDialog(false);
+    setPendingSubmitData(null);
+    setIsSubmitting(false);
   };
 
   return (
@@ -237,6 +337,7 @@ export default function StocksEntryPage() {
           <div className="bg-white rounded-lg shadow-md p-6 max-w-3xl mx-auto">
             <form onSubmit={handleSubmit}>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Form fields */}
                 {/* Catalog Number */}
                 <div className="mb-4">
                   <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="cat_no">
@@ -258,6 +359,7 @@ export default function StocksEntryPage() {
                   )}
                 </div>
                 
+                {/* Other form fields would be here */}
                 {/* Product Name */}
                 <div className="mb-4">
                   <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="product_name">
@@ -300,7 +402,7 @@ export default function StocksEntryPage() {
                   )}
                 </div>
                 
-                {/* HSN Number - New field */}
+                {/* HSN Number */}
                 <div className="mb-4">
                   <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="hsn_no">
                     HSN Number
@@ -421,7 +523,7 @@ export default function StocksEntryPage() {
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                       </svg>
-                      Adding...
+                      Processing...
                     </div>
                   ) : (
                     "Add Stock"
@@ -431,6 +533,37 @@ export default function StocksEntryPage() {
             </form>
           </div>
         </div>
+        
+        {/* Confirmation Dialog */}
+        {showConfirmDialog && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">
+                Item Already Exists
+              </h3>
+              <p className="text-gray-600 mb-6">
+                A product with catalog number <span className="font-bold">{pendingSubmitData?.cat_no}</span> already exists. 
+                Do you want to update it with the new information and add the quantity?
+              </p>
+              <div className="flex justify-end space-x-3">
+                <button
+                  type="button"
+                  onClick={handleCancelUpdate}
+                  className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded transition duration-200"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmUpdate}
+                  className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded transition duration-200"
+                >
+                  Update Item
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </ProtectedRoute>
   );

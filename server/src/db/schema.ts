@@ -14,10 +14,10 @@ export const users = pgTable('users', {
 export const items = pgTable('items', {
     id: serial('id').primaryKey(),
     user_id: integer('user_id').notNull().references(() => users.id),
-    cat_no: varchar('cat_no', { length: 20 }).unique().notNull(),
+    cat_no: varchar('cat_no', { length: 25 }).unique().notNull(),
     product_name: varchar('product_name', { length: 255 }).notNull(),
-    lot_no: varchar('lot_no', { length: 20 }),
-    hsn_no: varchar('hsn_no', { length: 20 }),
+    lot_no: varchar('lot_no', { length: 25 }),
+    hsn_no: varchar('hsn_no', { length: 25 }),
     quantity: integer('quantity').notNull(),
     w_rate: decimal('w_rate', { precision: 10, scale: 2 }),
     selling_price: decimal('selling_price', { precision: 10, scale: 2 }),
@@ -30,10 +30,10 @@ export const items = pgTable('items', {
 // Invoices Table
 export const invoices = pgTable('invoices', {
     id: serial('id').primaryKey(),
-    invoice_no: varchar('invoice_no', { length: 10 }).unique().notNull(),
+    invoice_no: varchar('invoice_no', { length: 25 }).unique().notNull(),
     user_id: integer('user_id').notNull().references(() => users.id),
     party_name: varchar('party_name', { length: 100 }).notNull(),
-    order_no: varchar('order_no', { length: 20 }).unique(),
+    order_no: varchar('order_no', { length: 25 }).unique(),
     doctor_name: varchar('doctor_name', { length: 100 }),
     patient_name: varchar('patient_name', { length: 100 }),
     address: varchar('address', { length: 255 }),

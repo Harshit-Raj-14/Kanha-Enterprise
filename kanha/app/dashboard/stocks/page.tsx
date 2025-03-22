@@ -25,9 +25,15 @@ interface StockItem extends Item {
   created_at?: string;
 }
 
-// Define the ItemsResponse interface
+// Define the ItemsResponse interface with pagination
 interface ItemsResponse {
   items: StockItem[];
+  pagination: {
+    totalItems: number;
+    itemsPerPage: number;
+    currentPage: number;
+    totalPages: number;
+  };
 }
 
 export default function StocksPage() {
@@ -35,6 +41,12 @@ export default function StocksPage() {
   const [items, setItems] = useState<StockItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   
   // State for delete confirmation
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -58,56 +70,65 @@ export default function StocksPage() {
     }, 3000);
   };
 
-  // Fetch items function with caching
-  const fetchItems = useCallback(async (forceRefresh = false) => {
-    if (!user?.id) return;
+  // Fetch items function (no caching for pagination version)
+  const fetchItems = useCallback(async () => {
+  if (!user?.id) return;
+  
+  try {
+    setLoading(true);
+    const response = await itemsApi.getUserItemsPaginated(
+      user.id, 
+      currentPage, 
+      itemsPerPage
+    );
     
-    // Check for cached data if not forcing refresh
-    if (!forceRefresh) {
-      const cachedData = localStorage.getItem('stockItemsCache');
-      const cachedTimestamp = localStorage.getItem('stockItemsCacheTime');
-      
-      // Use cache if it exists and is less than 30 minutes old
-      if (cachedData && cachedTimestamp) {
-        const cacheAge = Date.now() - parseInt(cachedTimestamp);
-        if (cacheAge < 30 * 60 * 1000) { // 30 minutes
-          setItems(JSON.parse(cachedData));
-          setLoading(false);
-          return;
-        }
-      }
+    const responseData = response as any;
+    setItems(responseData.items || []);
+    
+    // Check if pagination data exists before setting state
+    if (responseData.pagination) {
+      setTotalPages(responseData.pagination.totalPages || 1);
+      setTotalItems(responseData.pagination.totalItems || 0);
+    } else {
+      // Fallback values if pagination data is missing
+      console.warn('Pagination data is missing from the response');
+      setTotalPages(1);
+      setTotalItems(responseData.items?.length || 0);
     }
     
-    try {
-      setLoading(true);
-      const response = await itemsApi.getUserItems(user.id);
-      const responseItems = (response as ItemsResponse).items || [];
-      
-      // Save to cache
-      localStorage.setItem('stockItemsCache', JSON.stringify(responseItems));
-      localStorage.setItem('stockItemsCacheTime', Date.now().toString());
-      
-      setItems(responseItems);
-      setError(null);
-    } catch (err: unknown) {
-      console.error("Failed to fetch items:", err);
-      setError(
-        err instanceof Error ? err.message : "Failed to load items"
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, [user?.id]);
+    setError(null);
+  } catch (err: unknown) {
+    console.error("Failed to fetch items:", err);
+    setError(
+      err instanceof Error ? err.message : "Failed to load items"
+    );
+  } finally {
+    setLoading(false);
+  }
+}, [user?.id, currentPage, itemsPerPage]);
 
-  // Handle refresh button click
-  const handleRefresh = () => {
-    fetchItems(true); // true means force refresh (ignore cache)
-    showNotification("Refreshing inventory data...", "success");
+  // Handle page change
+  const handlePageChange = (page: number) => {
+    if (page < 1 || page > totalPages) return;
+    setCurrentPage(page);
+  };
+
+  // Handle items per page change
+  const handleItemsPerPageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newItemsPerPage = parseInt(e.target.value);
+    setItemsPerPage(newItemsPerPage);
+    setCurrentPage(1); // Reset to first page
   };
 
   useEffect(() => {
-    fetchItems(false); // false means use cache if available
-  }, [fetchItems]);
+    fetchItems();
+  }, [fetchItems, currentPage, itemsPerPage]);
+  
+  // Handle refresh button click
+  const handleRefresh = () => {
+    fetchItems();
+    showNotification("Refreshing inventory data...", "success");
+  };
   
   // Handle delete button click
   const handleDeleteClick = (item: StockItem) => {
@@ -123,12 +144,8 @@ export default function StocksPage() {
     try {
       await itemsApi.deleteItem(itemToDelete.id);
       
-      // Remove item from the list
-      const updatedItems = items.filter(item => item.id !== itemToDelete.id);
-      setItems(updatedItems);
-      
-      // Update cache
-      localStorage.setItem('stockItemsCache', JSON.stringify(updatedItems));
+      // After deletion, refresh the current page
+      await fetchItems();
       
       // Show success notification
       showNotification("Item deleted successfully", "success");
@@ -172,14 +189,8 @@ export default function StocksPage() {
       
       await itemsApi.updateItem(updatedItem.id, fullUpdatedItem);
       
-      // Update the item in the list
-      const updatedItems = items.map(item => 
-        item.id === updatedItem.id ? { ...item, ...updatedItem } : item
-      );
-      setItems(updatedItems);
-      
-      // Update cache
-      localStorage.setItem('stockItemsCache', JSON.stringify(updatedItems));
+      // Refresh the current page to show updated data
+      await fetchItems();
       
       // Show success notification
       showNotification("Item updated successfully", "success");
@@ -199,6 +210,136 @@ export default function StocksPage() {
     // Check if it's a valid number
     if (isNaN(numValue)) return '-';
     return `₹${numValue.toFixed(2)}`;
+  };
+
+  // Generate pagination controls
+  const renderPagination = () => {
+    if (totalPages <= 1) return null;
+
+    const pageButtons = [];
+    const maxVisiblePages = 5;
+    
+    // Add previous button
+    pageButtons.push(
+      <button
+        key="prev"
+        onClick={() => handlePageChange(currentPage - 1)}
+        disabled={currentPage === 1}
+        className={`px-3 py-1 rounded ${
+          currentPage === 1 
+            ? 'bg-gray-200 text-gray-500 cursor-not-allowed' 
+            : 'bg-white text-blue-600 hover:bg-blue-50'
+        }`}
+      >
+        &laquo;
+      </button>
+    );
+
+    // Calculate range of visible page buttons
+    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+    let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+    
+    if (endPage - startPage + 1 < maxVisiblePages) {
+      startPage = Math.max(1, endPage - maxVisiblePages + 1);
+    }
+
+    // Add first page and ellipsis if needed
+    if (startPage > 1) {
+      pageButtons.push(
+        <button
+          key="1"
+          onClick={() => handlePageChange(1)}
+          className="px-3 py-1 rounded bg-white text-blue-600 hover:bg-blue-50"
+        >
+          1
+        </button>
+      );
+      if (startPage > 2) {
+        pageButtons.push(
+          <span key="start-ellipsis" className="px-2 py-1">
+            ...
+          </span>
+        );
+      }
+    }
+
+    // Add visible page buttons
+    for (let i = startPage; i <= endPage; i++) {
+      pageButtons.push(
+        <button
+          key={i}
+          onClick={() => handlePageChange(i)}
+          className={`px-3 py-1 rounded ${
+            currentPage === i
+              ? 'bg-blue-600 text-white'
+              : 'bg-white text-blue-600 hover:bg-blue-50'
+          }`}
+        >
+          {i}
+        </button>
+      );
+    }
+
+    // Add last page and ellipsis if needed
+    if (endPage < totalPages) {
+      if (endPage < totalPages - 1) {
+        pageButtons.push(
+          <span key="end-ellipsis" className="px-2 py-1">
+            ...
+          </span>
+        );
+      }
+      pageButtons.push(
+        <button
+          key={totalPages}
+          onClick={() => handlePageChange(totalPages)}
+          className="px-3 py-1 rounded bg-white text-blue-600 hover:bg-blue-50"
+        >
+          {totalPages}
+        </button>
+      );
+    }
+
+    // Add next button
+    pageButtons.push(
+      <button
+        key="next"
+        onClick={() => handlePageChange(currentPage + 1)}
+        disabled={currentPage === totalPages}
+        className={`px-3 py-1 rounded ${
+          currentPage === totalPages
+            ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+            : 'bg-white text-blue-600 hover:bg-blue-50'
+        }`}
+      >
+        &raquo;
+      </button>
+    );
+
+    return (
+      <div className="flex items-center justify-between mt-6">
+        <div className="text-sm text-gray-700">
+          Showing <span className="font-medium">{items.length}</span> of{' '}
+          <span className="font-medium">{totalItems}</span> items
+        </div>
+        
+        <div className="flex items-center space-x-2">
+          <span className="text-sm text-gray-700">Items per page:</span>
+          <select
+            value={itemsPerPage}
+            onChange={handleItemsPerPageChange}
+            className="border rounded px-2 py-1 text-sm"
+          >
+            <option value="10">10</option>
+            <option value="25">25</option>
+            <option value="50">50</option>
+            <option value="100">100</option>
+          </select>
+        </div>
+        
+        <div className="flex space-x-1">{pageButtons}</div>
+      </div>
+    );
   };
 
   return (
@@ -245,6 +386,9 @@ export default function StocksPage() {
           <div className="bg-white rounded-lg shadow overflow-hidden">
             <div className="px-6 py-4 border-b border-gray-200">
               <h2 className="text-lg font-semibold">Inventory Items</h2>
+              <p className="text-sm text-gray-500">
+                Page {currentPage} of {totalPages} ({totalItems} total items)
+              </p>
             </div>
             
             <div className="p-6">
@@ -257,7 +401,7 @@ export default function StocksPage() {
                 <div className="text-center py-8 text-red-500">
                   <p>{error}</p>
                   <button 
-                    onClick={() => fetchItems(true)}
+                    onClick={handleRefresh}
                     className="mt-2 text-blue-600 hover:underline"
                   >
                     Try again
@@ -265,22 +409,44 @@ export default function StocksPage() {
                 </div>
               ) : items.length === 0 ? (
                 <div>
-                  <p className="text-gray-500 text-center py-8">No items found. Add your first item to get started.</p>
+                  <p className="text-gray-500 text-center py-8">
+                    {totalItems === 0 
+                      ? "No items found. Add your first item to get started."
+                      : "No items found on this page."}
+                  </p>
                 </div>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                       <tr>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Catalog No.</th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Product Name</th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lot No.</th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">HSN No.</th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">MRP</th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">W. Rate</th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Selling Price</th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Catalog No.
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Product Name
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Lot No.
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          HSN No.
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Quantity
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          MRP
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          W. Rate
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Selling Price
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Actions
+                        </th>
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
@@ -318,6 +484,9 @@ export default function StocksPage() {
                   </table>
                 </div>
               )}
+              
+              {/* Pagination Controls */}
+              {!loading && !error && renderPagination()}
             </div>
           </div>
         </div>

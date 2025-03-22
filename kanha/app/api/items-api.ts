@@ -108,7 +108,10 @@ export const itemsApi = {
         throw new Error('Selling price must be a valid number');
       }
       
+      console.log('Sending data to server:', itemData);
       const response = await api.post('/items', itemData);
+      
+      console.log('Server response:', response.data);
       return response.data;
     } catch (error: any) {
       console.error('Error adding stock item:', error);
@@ -127,6 +130,37 @@ export const itemsApi = {
       throw error;
     }
   },
+
+  // Get a specific item by catalog number
+  getItemByCatNo: async (catNo: string) => {
+    try {
+      if (!catNo.trim()) {
+        throw new Error('Catalog number cannot be empty');
+      }
+      
+      console.log(`Fetching item with catalog number: ${catNo}`);
+      const response = await api.get(`/items/cat-no/${encodeURIComponent(catNo)}`);
+      console.log(`Response for catalog number ${catNo}:`, response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error(`Error fetching item with catalog number ${catNo}:`, error);
+      
+      // If it's a 404, format it in a way that's easy to check
+      if (error.response && error.response.status === 404) {
+        const formattedError = {
+          message: 'Item not found.',
+          status: 404,
+          data: error.response.data,
+          originalError: error
+        };
+        throw formattedError;
+      }
+      
+      // For other errors
+      const formattedError = formatError(error);
+      throw formattedError;
+    }
+  },
   
   // Get all items for a user
   getUserItems: async (userId: number) => {
@@ -136,6 +170,24 @@ export const itemsApi = {
       }
       
       const response = await api.get(`/items/user/${userId}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching user items:', error);
+      const formattedError = formatError(error);
+      throw formattedError;
+    }
+  },
+
+  // Get items for a user with pagination
+  getUserItemsPaginated: async (userId: number, page = 1, limit = 10) => {
+    try {
+      if (isNaN(userId) || userId <= 0) {
+        throw new Error('Invalid user ID');
+      }
+      
+      const response = await api.get(`/items/user/paginated/${userId}`, {
+        params: { page, limit }
+      });
       return response.data;
     } catch (error) {
       console.error('Error fetching user items:', error);

@@ -226,11 +226,11 @@ const InvoiceForm: React.FC<InvoiceFormProps> = ({ onFormChange }) => {
             onChange={handleChange}
             className="w-full p-2 border border-gray-300 rounded"
           >
+            <option value="Credit">Credit</option>
             <option value="Cash">Cash</option>
             <option value="Card">Card</option>
             <option value="UPI">UPI</option>
             <option value="Net Banking">Net Banking</option>
-            <option value="Credit">Credit</option>
           </select>
         </div>
         
