@@ -489,13 +489,13 @@ router.delete('/:itemId', async (req: Request, res: Response): Promise<any> => {
 // GET - Find items by prefix search (cat_no or product_name)
 router.get('/search', async (req: Request, res: Response): Promise<void> => {
     try {
-      console.log('Search request received with query params:', req.query);
+      // console.log('Search request received with query params:', req.query);
       
       const userId = req.query.userId ? parseInt(req.query.userId as string) : null;
       const searchType = req.query.searchType as string;
       const searchTerm = req.query.searchTerm as string;
       
-      console.log('Parsed search parameters:', { userId, searchType, searchTerm });
+      // console.log('Parsed search parameters:', { userId, searchType, searchTerm });
       
       // Validate required parameters
       if (!userId || !searchType || !searchTerm) {
@@ -521,7 +521,7 @@ router.get('/search', async (req: Request, res: Response): Promise<void> => {
       
       if (searchType === 'cat_no') {
         // For catalog number search (now a string field)
-        console.log('Searching for catalog number prefix:', searchTerm);
+        // console.log('Searching for catalog number prefix:', searchTerm);
         
         searchResults = await db.select()
           .from(items)
@@ -531,7 +531,7 @@ router.get('/search', async (req: Request, res: Response): Promise<void> => {
           ));
       } else {
         // For product name search (text)
-        console.log('Searching for product name prefix:', searchTerm);
+        // console.log('Searching for product name prefix:', searchTerm);
         
         searchResults = await db.select()
           .from(items)
@@ -541,7 +541,7 @@ router.get('/search', async (req: Request, res: Response): Promise<void> => {
           ));
       }
       
-      console.log(`Found ${searchResults.length} matching items`);
+      // console.log(`Found ${searchResults.length} matching items`);
       
       res.status(200).json({
         count: searchResults.length,
